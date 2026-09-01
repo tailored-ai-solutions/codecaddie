@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "sigstore": {
+    "bundleMediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+    "oidcIssuer": "https://token.actions.githubusercontent.com",
+    "certificateIdentity": "https://github.com/tailored-ai-solutions/codecaddie/.github/workflows/release.yml@refs/heads/main",
+    "repository": "tailored-ai-solutions/codecaddie",
+    "repositoryId": "1354133785",
+    "workflowRef": "refs/heads/main",
+    "allowedTriggers": [
+      "push",
+      "workflow_dispatch"
+    ],
+    "tufMirror": "https://tuf-repo-cdn.sigstore.dev"
+  }
+}

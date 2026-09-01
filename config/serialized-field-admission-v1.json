@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie privacy owner",
+  "reviewCadence": "Every serialized field change and every release",
+  "default": "deny",
+  "changeRule": "A new serialized field is rejected until its closed schema, explicit sink allowlist, source and secret canary test, and privacy-owner review are committed together.",
+  "schemas": [
+    {
+      "path": "protocol/local-product-events-v2.schema.json",
+      "allowedFields": ["schemaVersion", "kind", "workspaceId", "sessionId", "productVersion", "platform", "cohort", "reportId", "elapsedMilliseconds"]
+    },
+    {
+      "path": "protocol/local-reliability-event-v1.schema.json",
+      "allowedFields": ["schemaVersion", "kind", "correlationId", "sessionId", "operation", "outcome", "errorCategory", "errorCode", "retryable", "elapsedMilliseconds", "alertCode", "productVersion", "platform"]
+    },
+    {
+      "path": "protocol/persisted-report-evidence-v1.schema.json",
+      "allowedFields": ["repositoryId", "commitSha", "blobOid", "path", "startLine", "endLine", "contentHash", "kind"]
+    },
+    {
+      "path": "protocol/updater-result-v1.schema.json",
+      "allowedFields": ["schemaVersion", "status", "code"]
+    }
+  ],
+  "sinks": [
+    {
+      "id": "word-and-recovery-exports",
+      "implementation": ["crates/codecaddie-core/src/export.rs", "crates/codecaddie-core/src/local_state/workspace_store.rs"],
+      "allowlist": "validated report metadata, immutable evidence coordinates, signed event metadata, and aggregate summaries",
+      "tests": ["privacy_adversarial_word_reports_are_metadata_only_docx_packages", "privacy_adversarial_attachment_never_enters_ipc_events_or_recovery_exports"]
+    },
+    {
+      "id": "local-runtime-telemetry",
+      "implementation": ["crates/codecaddie-core/src/provider/stream.rs", "crates/codecaddie-core/src/reliability.rs", "crates/codecaddie-core/src/runtime_health_assurance.rs", "crates/codecaddie-core/src/local_state/workspace_store.rs", "protocol/local-reliability-event-v1.schema.json"],
+      "allowlist": "closed local reliability events for logs, traces, metrics, alerts, and content-free crash facts: stable operation, outcome, error code, retryability, correlation, version, platform, and elapsed-time fields only",
+      "tests": ["privacy_adversarial_progress_diagnostics_and_logs_never_echo_untrusted_payloads", "privacy_adversarial_runtime_health_and_trace_spans_drive_local_aggregates", "privacy_adversarial_all_runtime_telemetry_surfaces_exclude_private_content", "privacy_adversarial_crash_markers_become_content_free_reliability_events"]
+    },
+    {
+      "id": "reports-ipc-prompts-and-product-events",
+      "implementation": ["crates/codecaddie-core/src/analyzer/report_materialize.rs", "crates/codecaddie-core/src/service/recommendations.rs", "crates/codecaddie-core/src/local_state/workspace_store.rs"],
+      "allowlist": "derived report metadata, evidence coordinates, stable identifiers, aggregate counts, and bounded recommendation metadata",
+      "tests": ["privacy_adversarial_report_redacts_repository_payload_and_hostile_direction", "privacy_adversarial_prompt_keeps_untrusted_planning_data_below_a_fixed_boundary", "privacy_adversarial_product_event_contract_is_content_free_and_local"]
+    },
+    {
+      "id": "updater-result-mailbox-and-startup-ipc",
+      "implementation": ["crates/codecaddie-core/src/bin/codecaddie-updater.rs", "crates/codecaddie-core/src/update.rs", "crates/codecaddie-core/src/service/system.rs", "apps/desktop/src/core_ipc.zig", "protocol/updater-result-v1.schema.json"],
+      "allowlist": "one schema version, the fixed failed status, and one fixed updater result code only; no paths, source text, attachment content, secrets, raw installer or OS errors, or free-form fields",
+      "tests": ["privacy_adversarial_updater_mailbox_and_startup_ipc_are_content_free"]
+    }
+  ],
+  "releaseGate": "node --test scripts/tests/privacy-contract-assurance.test.mjs && cargo test --workspace --locked privacy_adversarial -- --nocapture"
+}

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "githubRepository": "tailored-ai-solutions/codecaddie",
+  "latestReleaseApiUrl": "https://api.github.com/repos/tailored-ai-solutions/codecaddie/releases/latest",
+  "releaseDownloadBaseUrl": "https://github.com/tailored-ai-solutions/codecaddie/releases/download",
+  "manifestAssetName": "manifest.json",
+  "manifestBundleAssetName": "manifest.sigstore.json",
+  "macosUniversalAssetName": "CodeCaddie-macOS-universal.zip"
+}

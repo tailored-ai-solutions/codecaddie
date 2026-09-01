@@ -1,0 +1,18 @@
+self-hosted-runner:
+  # actionlint 1.7.7 (the release pinned by ci.yml) predates GitHub's standard
+  # Intel label. Listing it here preserves runner validation without
+  # suppressing other unknown labels.
+  labels:
+    - macos-15-intel
+paths:
+  .github/workflows/reconcile-stable-release.yml:
+    ignore:
+      # GitHub Actions added concurrency.queue in May 2026; actionlint 1.7.7
+      # (the release pinned by ci.yml) does not yet recognize the official
+      # queue: max syntax.
+      - 'unexpected key "queue" for "concurrency" section'
+  .github/workflows/release.yml:
+    ignore:
+      # Same known false positive, scoped to the one workflow that uses it;
+      # GitHub validates and executes this official queueing syntax.
+      - 'unexpected key "queue" for "concurrency" section'

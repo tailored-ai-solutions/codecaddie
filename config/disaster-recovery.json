@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie reliability owner",
+  "reviewCadence": "Per release and quarterly restore drill",
+  "localOnly": true,
+  "scheduledBackup": {
+    "cadenceHours": 24,
+    "trigger": "First installed-app launch after due and immediately when enabled",
+    "retentionCount": 14,
+    "recoveryPointObjectiveHours": 24,
+    "recoveryTimeObjectiveMinutes": 30
+  },
+  "failureDrills": [
+    "interrupted_or_partial_import",
+    "interrupted_data_migration",
+    "insufficient_disk_capacity",
+    "lost_local_content_key",
+    "corrupt_or_incompatible_manifest"
+  ],
+  "portableManifest": {
+    "schemaVersion": 1,
+    "binds": [
+      "creation_time",
+      "encryption_algorithm",
+      "key_derivation_parameters",
+      "workspace_identity",
+      "event_count",
+      "event_digest"
+    ],
+    "legacyV1WithoutMetadata": "accepted",
+    "futureOrPartialMetadata": "rejected_before_state_mutation"
+  },
+  "executableMatrix": "config/executable-recovery-matrix.json",
+  "executableTests": [
+    "privacy_adversarial_portable_backup_authenticates_and_restores_transactionally",
+    "scheduled_backup_retention_prunes_only_owned_regular_files",
+    "interrupted_plaintext_encryption_migration_retries_without_data_loss",
+    "interrupted_plaintext_event_migration_retries_without_duplicates",
+    "interrupted_local_state_migrations_converge_before_and_after_rename",
+    "storage_capacity_failures_preserve_the_committed_value_for_retry",
+    "local_state_recovers_interrupted_quarantine_and_stale_sidecars"
+  ]
+}

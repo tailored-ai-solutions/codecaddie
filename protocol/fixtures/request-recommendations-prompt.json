@@ -1,0 +1,9 @@
+{
+  "id": "request-recommendations-prompt",
+  "protocolVersion": 2,
+  "workspaceId": "workspace-1",
+  "method": "recommendations.prompt",
+  "params": {
+    "recommendationIds": ["recommendation-1", "recommendation-2"]
+  }
+}

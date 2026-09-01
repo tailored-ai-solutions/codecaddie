@@ -1,0 +1,1 @@
+{"id":"req-context-files-0001","protocolVersion":2,"method":"context.files.inspect","params":{"paths":["/Users/example/Documents/board.pdf","C:\\Users\\example\\Documents\\strategy.pptx"]}}

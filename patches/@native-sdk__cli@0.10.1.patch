@@ -1,0 +1,1628 @@
+diff --git a/build/app.zig b/build/app.zig
+index 0ec7a26301620f571fdf140aa6d5e7912bb804c6..8ae154d56586163fd4fb8bd3c37dd9c59b51f6cc 100644
+--- a/build/app.zig
++++ b/build/app.zig
+@@ -1819,7 +1819,7 @@ pub fn addAppArtifacts(b: *std.Build, dep: *std.Build.Dependency, app_options: A
+     if (target.result.os.tag == .windows and app_optimize != .Debug) {
+         exe.subsystem = .windows;
+     }
+-    linkPlatform(b, dep, target, app_mod, exe, selected_platform, web_engine, web_layer, cef_dir, cef_auto_install);
++    linkPlatform(b, dep, target, app_mod, exe, selected_platform, web_engine, web_layer, cef_dir, cef_auto_install, app_config.credentials_capability);
+     const install = b.addInstallArtifact(exe, .{});
+     b.getInstallStep().dependOn(&install.step);
+ 
+@@ -2448,13 +2448,14 @@ fn externalModule(b: *std.Build, dep: *std.Build.Dependency, target: std.Build.R
+ // Reproduced with a 10-line `zig cc` program against both the 14.5 and
+ // 26.0 SDKs. Release builds never hit it (no UBSan), which is why only
+ // Debug-built examples (standardOptimizeOption default) crashed.
+-fn linkPlatform(b: *std.Build, dep: *std.Build.Dependency, target: std.Build.ResolvedTarget, app_mod: *std.Build.Module, exe: *std.Build.Step.Compile, platform: PlatformOption, web_engine: WebEngineOption, web_layer: bool, cef_dir: []const u8, cef_auto_install: bool) void {
++fn linkPlatform(b: *std.Build, dep: *std.Build.Dependency, target: std.Build.ResolvedTarget, app_mod: *std.Build.Module, exe: *std.Build.Step.Compile, platform: PlatformOption, web_engine: WebEngineOption, web_layer: bool, cef_dir: []const u8, cef_auto_install: bool, credentials_capability: bool) void {
+     addPlatformLinkSearchPaths(b, platform, web_engine, cef_dir, app_mod);
++    const credentials_define = if (credentials_capability) "-DNATIVE_SDK_CREDENTIALS=1" else "-DNATIVE_SDK_CREDENTIALS=0";
+     if (platform == .macos) {
+         switch (web_engine) {
+             .system => {
+                 const sdk_include = if (b.sysroot) |sysroot| b.fmt("-I{s}/usr/include", .{sysroot}) else "";
+-                const flags: []const []const u8 = if (b.sysroot) |sysroot| &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC", "-mmacosx-version-min=11.0", "-isysroot", sysroot, sdk_include } else &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC", "-mmacosx-version-min=11.0" };
++                const flags: []const []const u8 = if (b.sysroot) |sysroot| &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC", "-mmacosx-version-min=11.0", credentials_define, "-isysroot", sysroot, sdk_include } else &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC", "-mmacosx-version-min=11.0", credentials_define };
+                 app_mod.addCSourceFile(.{ .file = dep.path("src/platform/macos/appkit_host.m"), .flags = flags });
+                 app_mod.linkFramework("WebKit", .{});
+             },
+@@ -2471,7 +2472,7 @@ fn linkPlatform(b: *std.Build, dep: *std.Build.Dependency, target: std.Build.Res
+                 // bundled libc++/libc headers). A plain -I shadows libc++'s <string.h>/<math.h>
+                 // wrappers in ObjC++ and surfaces SDK nullability gaps as a diagnostic flood.
+                 const sdk_include = if (b.sysroot) |sysroot| b.fmt("-isystem{s}/usr/include", .{sysroot}) else "";
+-                const flags: []const []const u8 = if (b.sysroot) |sysroot| &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC++", "-std=c++17", "-stdlib=libc++", "-mmacosx-version-min=11.0", "-isysroot", sysroot, sdk_include, include_arg, define_arg } else &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC++", "-std=c++17", "-stdlib=libc++", "-mmacosx-version-min=11.0", include_arg, define_arg };
++                const flags: []const []const u8 = if (b.sysroot) |sysroot| &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC++", "-std=c++17", "-stdlib=libc++", "-mmacosx-version-min=11.0", credentials_define, "-isysroot", sysroot, sdk_include, include_arg, define_arg } else &.{ "-fobjc-arc", "-fno-sanitize=builtin", "-ObjC++", "-std=c++17", "-stdlib=libc++", "-mmacosx-version-min=11.0", credentials_define, include_arg, define_arg };
+                 app_mod.addCSourceFile(.{ .file = dep.path("src/platform/macos/cef_host.mm"), .flags = flags });
+                 app_mod.addObjectFile(b.path(b.fmt("{s}/libcef_dll_wrapper/libcef_dll_wrapper.a", .{cef_dir})));
+                 app_mod.linkFramework("Chromium Embedded Framework", .{});
+@@ -2556,7 +2557,7 @@ fn linkPlatform(b: *std.Build, dep: *std.Build.Dependency, target: std.Build.Res
+                 // turns on the host's embedded-WebView layer; the host
+                 // fails the compile by design if it cannot be found.
+                 app_mod.addIncludePath(dep.path("third_party/webview2/include"));
+-                app_mod.addCSourceFile(.{ .file = dep.path("src/platform/windows/webview2_host.cpp"), .flags = &.{"-std=c++17"} });
++                app_mod.addCSourceFile(.{ .file = dep.path("src/platform/windows/webview2_host.cpp"), .flags = &.{ "-std=c++17", credentials_define } });
+                 app_mod.addCSourceFile(.{ .file = dep.path("src/platform/windows/gpu_surface_renderer.cpp"), .flags = &.{"-std=c++17"} });
+                 // WebView2Loader.dll rides next to the installed app
+                 // executable: the host loads it at runtime to discover
+@@ -2581,7 +2582,7 @@ fn linkPlatform(b: *std.Build, dep: *std.Build.Dependency, target: std.Build.Res
+                 // stubbed host teaches at runtime by reporting
+                 // WebViewNotFound the moment an app actually uses a
+                 // WebView.
+-                app_mod.addCSourceFile(.{ .file = dep.path("src/platform/windows/webview2_host.cpp"), .flags = &.{ "-std=c++17", "-DNATIVE_SDK_ALLOW_WEBVIEW2_STUB" } });
++                app_mod.addCSourceFile(.{ .file = dep.path("src/platform/windows/webview2_host.cpp"), .flags = &.{ "-std=c++17", "-DNATIVE_SDK_ALLOW_WEBVIEW2_STUB", credentials_define } });
+                 app_mod.addCSourceFile(.{ .file = dep.path("src/platform/windows/gpu_surface_renderer.cpp"), .flags = &.{"-std=c++17"} });
+             },
+             .chromium => {
+diff --git a/src/platform/macos/appkit_host.h b/src/platform/macos/appkit_host.h
+index e5986d387551edd957f73c5b7eb81b81dbad0c1a..f5dc0ac48b7acdb35ee943bce367618648f92686 100644
+--- a/src/platform/macos/appkit_host.h
++++ b/src/platform/macos/appkit_host.h
+@@ -36,6 +36,7 @@ typedef enum {
+     NATIVE_SDK_APPKIT_EVENT_VIEW_FOCUSED = 22,
+     NATIVE_SDK_APPKIT_EVENT_TRAY_COMMAND = 23,
+     NATIVE_SDK_APPKIT_EVENT_NOTIFICATION_COMMAND = 24,
++    NATIVE_SDK_APPKIT_EVENT_FILES_DRAGGED = 25,
+ } native_sdk_appkit_event_kind_t;
+ 
+ /* Audio player reports (EVENT_AUDIO payloads). LOADED acknowledges a
+@@ -283,6 +284,7 @@ typedef struct {
+     size_t input_text_len;
+     const char *drop_paths;
+     size_t drop_paths_len;
++    int file_drag_phase;
+     uint64_t frame_index;
+     uint64_t timestamp_ns;
+     uint64_t frame_interval_ns;
+diff --git a/src/platform/macos/appkit_host.m b/src/platform/macos/appkit_host.m
+index 3225c78dcb28e286a8d4e59778ab2d0dab7e0fa6..8c6ed3bdc570bf2088a9ae8aefc226e98221426a 100644
+--- a/src/platform/macos/appkit_host.m
++++ b/src/platform/macos/appkit_host.m
+@@ -16,7 +16,12 @@
+ #import <CoreText/CoreText.h>
+ #import <ImageIO/ImageIO.h>
+ #import <dispatch/dispatch.h>
++#ifndef NATIVE_SDK_CREDENTIALS
++#define NATIVE_SDK_CREDENTIALS 1
++#endif
++#if NATIVE_SDK_CREDENTIALS
+ #import <Security/Security.h>
++#endif
+ #include <dlfcn.h>
+ #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+ #include <math.h>
+@@ -346,6 +351,7 @@ static NSUInteger NativeSdkRangeEnd(NSRange range) {
+     return [value substringWithRange:range];
+ }
+ 
++#if NATIVE_SDK_CREDENTIALS
+ static NSMutableDictionary *NativeSdkCredentialQuery(NSString *service, NSString *account) {
+     return [@{
+         (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
+@@ -362,6 +368,7 @@ static int NativeSdkCredentialStatus(OSStatus status, int missingCode) {
+     if (status == errSecAuthFailed || status == errSecUserCanceled || status == errSecMissingEntitlement) return -3;
+     return -1;
+ }
++#endif
+ 
+ /// The chromeless (titlebarStyle 3) window class: a borderless NSWindow
+ /// refuses key/main status by default, which would leave a fully-skinned
+@@ -1143,6 +1150,7 @@ - (void)stop;
+ - (BOOL)drainPendingPreRunStop;
+ - (void)emitEvent:(native_sdk_appkit_event_t)event;
+ - (BOOL)emitDroppedFileURLs:(NSArray<NSURL *> *)urls windowId:(uint64_t)windowId viewLabel:(NSString *)viewLabel point:(NSPoint)point;
++- (void)emitFileDragAtPoint:(NSPoint)point windowId:(uint64_t)windowId viewLabel:(NSString *)viewLabel phase:(NSInteger)phase;
+ - (void)startApplicationActivationObservers;
+ - (void)stopApplicationActivationObservers;
+ - (void)applicationDidBecomeActive:(NSNotification *)notification;
+@@ -1249,6 +1257,12 @@ static NSPoint NativeSdkViewLocalYDownPoint(NSView *view, NSPoint point) {
+     return point;
+ }
+ 
++static BOOL NativeSdkDraggingHasFiles(id<NSDraggingInfo> sender) {
++    if (!sender) return NO;
++    return [sender.draggingPasteboard canReadObjectForClasses:@[[NSURL class]]
++        options:@{ NSPasteboardURLReadingFileURLsOnlyKey: @YES }];
++}
++
+ @implementation NativeSdkWindowDelegate
+ 
+ - (void)windowDidResize:(NSNotification *)notification {
+@@ -1345,10 +1359,28 @@ - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(N
+ // still wins (views outrank the window for registered types); the fallback
+ // hit-tests anyway so adopted/layered content keeps the most specific label.
+ - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+-    (void)sender;
++    if (!NativeSdkDraggingHasFiles(sender)) return NSDragOperationNone;
++    NSWindow *window = self.host.windows[@(self.windowId)] ?: (self.windowId == 1 ? self.host.window : nil);
++    NSView *contentView = window.contentView;
++    NSPoint point = contentView ? NativeSdkViewLocalYDownPoint(contentView, [contentView convertPoint:sender.draggingLocation fromView:nil]) : NSMakePoint(0, 0);
++    [self.host emitFileDragAtPoint:point windowId:self.windowId viewLabel:@"" phase:0];
+     return NSDragOperationCopy;
+ }
+ 
++- (NSDragOperation)draggingUpdated:(id<NSDraggingInfo>)sender {
++    if (!NativeSdkDraggingHasFiles(sender)) return NSDragOperationNone;
++    NSWindow *window = self.host.windows[@(self.windowId)] ?: (self.windowId == 1 ? self.host.window : nil);
++    NSView *contentView = window.contentView;
++    NSPoint point = contentView ? NativeSdkViewLocalYDownPoint(contentView, [contentView convertPoint:sender.draggingLocation fromView:nil]) : NSMakePoint(0, 0);
++    [self.host emitFileDragAtPoint:point windowId:self.windowId viewLabel:@"" phase:1];
++    return NSDragOperationCopy;
++}
++
++- (void)draggingExited:(id<NSDraggingInfo>)sender {
++    (void)sender;
++    [self.host emitFileDragAtPoint:NSMakePoint(0, 0) windowId:self.windowId viewLabel:@"" phase:2];
++}
++
+ - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
+     NSPasteboard *pasteboard = sender.draggingPasteboard;
+     NSArray<NSURL *> *urls = [pasteboard readObjectsForClasses:@[ [NSURL class] ]
+@@ -1382,7 +1414,9 @@ - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
+ 
+     NSView *coordinateView = viewLabel.length > 0 ? targetView : contentView;
+     NSPoint point = NativeSdkViewLocalYDownPoint(coordinateView, [coordinateView convertPoint:windowPoint fromView:nil]);
+-    return [self.host emitDroppedFileURLs:urls windowId:self.windowId viewLabel:viewLabel point:point];
++    BOOL accepted = [self.host emitDroppedFileURLs:urls windowId:self.windowId viewLabel:viewLabel point:point];
++    [self.host emitFileDragAtPoint:point windowId:self.windowId viewLabel:viewLabel phase:2];
++    return accepted;
+ }
+ 
+ // close_policy .hide: the USER's close affordance (the red button,
+@@ -1478,16 +1512,32 @@ - (void)rightMouseDown:(NSEvent *)event { if (![self eventIsCovered:event]) [sup
+ - (void)rightMouseUp:(NSEvent *)event { if (![self eventIsCovered:event]) [super rightMouseUp:event]; }
+ 
+ - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+-    (void)sender;
++    if (!NativeSdkDraggingHasFiles(sender)) return NSDragOperationNone;
++    NSPoint point = NativeSdkViewLocalYDownPoint(self, [self convertPoint:sender.draggingLocation fromView:nil]);
++    [self.host emitFileDragAtPoint:point windowId:self.windowId viewLabel:self.viewLabel phase:0];
+     return NSDragOperationCopy;
+ }
+ 
++- (NSDragOperation)draggingUpdated:(id<NSDraggingInfo>)sender {
++    if (!NativeSdkDraggingHasFiles(sender)) return NSDragOperationNone;
++    NSPoint point = NativeSdkViewLocalYDownPoint(self, [self convertPoint:sender.draggingLocation fromView:nil]);
++    [self.host emitFileDragAtPoint:point windowId:self.windowId viewLabel:self.viewLabel phase:1];
++    return NSDragOperationCopy;
++}
++
++- (void)draggingExited:(id<NSDraggingInfo>)sender {
++    (void)sender;
++    [self.host emitFileDragAtPoint:NSMakePoint(0, 0) windowId:self.windowId viewLabel:self.viewLabel phase:2];
++}
++
+ - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
+     NSPasteboard *pasteboard = sender.draggingPasteboard;
+     NSArray<NSURL *> *urls = [pasteboard readObjectsForClasses:@[[NSURL class]]
+                                                        options:@{ NSPasteboardURLReadingFileURLsOnlyKey: @YES }];
+     NSPoint point = NativeSdkViewLocalYDownPoint(self, [self convertPoint:sender.draggingLocation fromView:nil]);
+-    return [self.host emitDroppedFileURLs:urls windowId:self.windowId viewLabel:self.viewLabel point:point];
++    BOOL accepted = [self.host emitDroppedFileURLs:urls windowId:self.windowId viewLabel:self.viewLabel point:point];
++    [self.host emitFileDragAtPoint:point windowId:self.windowId viewLabel:self.viewLabel phase:2];
++    return accepted;
+ }
+ 
+ @end
+@@ -3932,16 +3982,32 @@ - (void)configureWithHost:(NativeSdkAppKitHost *)host windowId:(uint64_t)windowI
+ }
+ 
+ - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+-    (void)sender;
++    if (!NativeSdkDraggingHasFiles(sender)) return NSDragOperationNone;
++    NSPoint point = NativeSdkViewLocalYDownPoint(self, [self convertPoint:sender.draggingLocation fromView:nil]);
++    [self.host emitFileDragAtPoint:point windowId:self.windowId viewLabel:self.viewLabel phase:0];
++    return NSDragOperationCopy;
++}
++
++- (NSDragOperation)draggingUpdated:(id<NSDraggingInfo>)sender {
++    if (!NativeSdkDraggingHasFiles(sender)) return NSDragOperationNone;
++    NSPoint point = NativeSdkViewLocalYDownPoint(self, [self convertPoint:sender.draggingLocation fromView:nil]);
++    [self.host emitFileDragAtPoint:point windowId:self.windowId viewLabel:self.viewLabel phase:1];
+     return NSDragOperationCopy;
+ }
+ 
++- (void)draggingExited:(id<NSDraggingInfo>)sender {
++    (void)sender;
++    [self.host emitFileDragAtPoint:NSMakePoint(0, 0) windowId:self.windowId viewLabel:self.viewLabel phase:2];
++}
++
+ - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
+     NSPasteboard *pasteboard = sender.draggingPasteboard;
+     NSArray<NSURL *> *urls = [pasteboard readObjectsForClasses:@[[NSURL class]]
+                                                        options:@{ NSPasteboardURLReadingFileURLsOnlyKey: @YES }];
+     NSPoint point = NativeSdkViewLocalYDownPoint(self, [self convertPoint:sender.draggingLocation fromView:nil]);
+-    return [self.host emitDroppedFileURLs:urls windowId:self.windowId viewLabel:self.viewLabel point:point];
++    BOOL accepted = [self.host emitDroppedFileURLs:urls windowId:self.windowId viewLabel:self.viewLabel point:point];
++    [self.host emitFileDragAtPoint:point windowId:self.windowId viewLabel:self.viewLabel phase:2];
++    return accepted;
+ }
+ 
+ - (void)dealloc {
+@@ -12641,6 +12707,20 @@ - (BOOL)emitDroppedFileURLs:(NSArray<NSURL *> *)urls windowId:(uint64_t)windowId
+     return YES;
+ }
+ 
++- (void)emitFileDragAtPoint:(NSPoint)point windowId:(uint64_t)windowId viewLabel:(NSString *)viewLabel phase:(NSInteger)phase {
++    NSString *safeViewLabel = viewLabel ?: @"";
++    const char *viewLabelBytes = safeViewLabel.UTF8String ?: "";
++    [self emitEvent:(native_sdk_appkit_event_t){
++        .kind = NATIVE_SDK_APPKIT_EVENT_FILES_DRAGGED,
++        .window_id = windowId,
++        .x = point.x,
++        .y = point.y,
++        .view_label = viewLabelBytes,
++        .view_label_len = [safeViewLabel lengthOfBytesUsingEncoding:NSUTF8StringEncoding],
++        .file_drag_phase = (int)phase,
++    }];
++}
++
+ - (void)setShortcutsWithIds:(const char *const *)ids idLengths:(const size_t *)idLengths keys:(const char *const *)keys keyLengths:(const size_t *)keyLengths modifiers:(const uint32_t *)modifiers count:(size_t)count {
+     NSMutableArray<NativeSdkShortcut *> *items = [[NSMutableArray alloc] initWithCapacity:count];
+     for (size_t index = 0; index < count; index++) {
+@@ -13671,6 +13751,7 @@ int native_sdk_appkit_clear_recent_documents(native_sdk_appkit_host_t *host) {
+ }
+ 
+ int native_sdk_appkit_set_credential(native_sdk_appkit_host_t *host, const char *service, size_t service_len, const char *account, size_t account_len, const char *secret, size_t secret_len) {
++#if NATIVE_SDK_CREDENTIALS
+     (void)host;
+     @autoreleasepool {
+         NSString *serviceString = NativeSdkStringFromBytes(service, service_len);
+@@ -13686,9 +13767,14 @@ int native_sdk_appkit_set_credential(native_sdk_appkit_host_t *host, const char
+         }
+         return NativeSdkCredentialStatus(status, -1);
+     }
++#else
++    (void)host; (void)service; (void)service_len; (void)account; (void)account_len; (void)secret; (void)secret_len;
++    return 0;
++#endif
+ }
+ 
+ size_t native_sdk_appkit_get_credential(native_sdk_appkit_host_t *host, const char *service, size_t service_len, const char *account, size_t account_len, char *buffer, size_t buffer_len) {
++#if NATIVE_SDK_CREDENTIALS
+     (void)host;
+     @autoreleasepool {
+         NSString *serviceString = NativeSdkStringFromBytes(service, service_len);
+@@ -13708,9 +13794,14 @@ size_t native_sdk_appkit_get_credential(native_sdk_appkit_host_t *host, const ch
+         memcpy(buffer, data.bytes, data.length);
+         return data.length;
+     }
++#else
++    (void)host; (void)service; (void)service_len; (void)account; (void)account_len; (void)buffer; (void)buffer_len;
++    return SIZE_MAX - 1;
++#endif
+ }
+ 
+ int native_sdk_appkit_delete_credential(native_sdk_appkit_host_t *host, const char *service, size_t service_len, const char *account, size_t account_len) {
++#if NATIVE_SDK_CREDENTIALS
+     (void)host;
+     @autoreleasepool {
+         NSString *serviceString = NativeSdkStringFromBytes(service, service_len);
+@@ -13720,6 +13811,10 @@ int native_sdk_appkit_delete_credential(native_sdk_appkit_host_t *host, const ch
+         OSStatus status = SecItemDelete((__bridge CFDictionaryRef)query);
+         return NativeSdkCredentialStatus(status, 0);
+     }
++#else
++    (void)host; (void)service; (void)service_len; (void)account; (void)account_len;
++    return -1;
++#endif
+ }
+ 
+ size_t native_sdk_appkit_format_local_time(native_sdk_appkit_host_t *host, int64_t timestamp_ms, int style, char *buffer, size_t buffer_len) {
+diff --git a/src/platform/macos/cef_host.mm b/src/platform/macos/cef_host.mm
+index 280ed148e417d4f9e52e485df0ee19de32efc43d..2fa879c9ff523cc1960c748f3f19bc35f3d98c32 100644
+--- a/src/platform/macos/cef_host.mm
++++ b/src/platform/macos/cef_host.mm
+@@ -4,7 +4,12 @@
+ #import <CoreFoundation/CoreFoundation.h>
+ #import <dispatch/dispatch.h>
+ #import <ImageIO/ImageIO.h>
++#ifndef NATIVE_SDK_CREDENTIALS
++#define NATIVE_SDK_CREDENTIALS 1
++#endif
++#if NATIVE_SDK_CREDENTIALS
+ #import <Security/Security.h>
++#endif
+ #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+ #include <crt_externs.h>
+ #include <dlfcn.h>
+@@ -132,6 +137,7 @@ static uint64_t NativeSdkChromiumTimestampNanoseconds(void) {
+     return nil;
+ }
+ 
++#if NATIVE_SDK_CREDENTIALS
+ static NSMutableDictionary *NativeSdkCredentialQuery(NSString *service, NSString *account) {
+     return [@{
+         (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
+@@ -147,6 +153,7 @@ static int NativeSdkCredentialStatus(OSStatus status, int missingCode) {
+     if (status == errSecAuthFailed || status == errSecUserCanceled || status == errSecMissingEntitlement) return -3;
+     return -1;
+ }
++#endif
+ 
+ class NativeSdkCefBridgeV8Handler final : public CefV8Handler {
+ public:
+@@ -3449,6 +3456,7 @@ int native_sdk_appkit_clear_recent_documents(native_sdk_appkit_host_t *host) {
+ }
+ 
+ int native_sdk_appkit_set_credential(native_sdk_appkit_host_t *host, const char *service, size_t service_len, const char *account, size_t account_len, const char *secret, size_t secret_len) {
++#if NATIVE_SDK_CREDENTIALS
+     (void)host;
+     @autoreleasepool {
+         NSString *serviceString = NativeSdkStringFromBytes(service, service_len);
+@@ -3464,9 +3472,14 @@ int native_sdk_appkit_set_credential(native_sdk_appkit_host_t *host, const char
+         }
+         return NativeSdkCredentialStatus(status, -1);
+     }
++#else
++    (void)host; (void)service; (void)service_len; (void)account; (void)account_len; (void)secret; (void)secret_len;
++    return 0;
++#endif
+ }
+ 
+ size_t native_sdk_appkit_get_credential(native_sdk_appkit_host_t *host, const char *service, size_t service_len, const char *account, size_t account_len, char *buffer, size_t buffer_len) {
++#if NATIVE_SDK_CREDENTIALS
+     (void)host;
+     @autoreleasepool {
+         NSString *serviceString = NativeSdkStringFromBytes(service, service_len);
+@@ -3486,9 +3499,14 @@ size_t native_sdk_appkit_get_credential(native_sdk_appkit_host_t *host, const ch
+         memcpy(buffer, data.bytes, data.length);
+         return data.length;
+     }
++#else
++    (void)host; (void)service; (void)service_len; (void)account; (void)account_len; (void)buffer; (void)buffer_len;
++    return SIZE_MAX - 1;
++#endif
+ }
+ 
+ int native_sdk_appkit_delete_credential(native_sdk_appkit_host_t *host, const char *service, size_t service_len, const char *account, size_t account_len) {
++#if NATIVE_SDK_CREDENTIALS
+     (void)host;
+     @autoreleasepool {
+         NSString *serviceString = NativeSdkStringFromBytes(service, service_len);
+@@ -3498,6 +3516,10 @@ int native_sdk_appkit_delete_credential(native_sdk_appkit_host_t *host, const ch
+         OSStatus status = SecItemDelete((__bridge CFDictionaryRef)query);
+         return NativeSdkCredentialStatus(status, 0);
+     }
++#else
++    (void)host; (void)service; (void)service_len; (void)account; (void)account_len;
++    return -1;
++#endif
+ }
+ 
+ static NSArray<NSString *> *NativeSdkParseExtensions(const char *extensions, size_t len) {
+diff --git a/src/platform/macos/root.zig b/src/platform/macos/root.zig
+index 0e186e7bfbffad2ea5b3fbc0759e2574427e2f39..e5c59a0b3768d17948944194337ec86aa0ae8910 100644
+--- a/src/platform/macos/root.zig
++++ b/src/platform/macos/root.zig
+@@ -51,6 +51,7 @@ const AppKitEventKind = enum(c_int) {
+     view_focused = 22,
+     tray_command = 23,
+     notification_command = 24,
++    files_dragged = 25,
+ };
+ 
+ const AppKitEvent = extern struct {
+@@ -84,6 +85,7 @@ const AppKitEvent = extern struct {
+     input_text_len: usize,
+     drop_paths: [*]const u8,
+     drop_paths_len: usize,
++    file_drag_phase: c_int,
+     frame_index: u64,
+     timestamp_ns: u64,
+     frame_interval_ns: u64,
+@@ -1049,6 +1051,16 @@ fn appkitCallback(context: ?*anyopaque, event: *const AppKitEvent) callconv(.c)
+             .timestamp_ns = event.timestamp_ns,
+         } }),
+         .wake => state.emit(.wake),
++        .files_dragged => state.emit(.{ .files_dragged = .{
++            .window_id = event.window_id,
++            .view_label = event.view_label[0..event.view_label_len],
++            .point = if (event.view_label_len > 0) geometry.PointF.init(@floatCast(event.x), @floatCast(event.y)) else null,
++            .phase = switch (event.file_drag_phase) {
++                0 => .entered,
++                1 => .updated,
++                else => .exited,
++            },
++        } }),
+         .files_dropped => {
+             var paths_buffer: [platform_mod.max_drop_paths][]const u8 = undefined;
+             state.emit(.{ .files_dropped = fileDropEventFromAppKitEvent(event, paths_buffer[0..]) });
+@@ -3403,7 +3415,7 @@ test "mac file drop bridge preserves view label point and paths" {
+ 
+ test "mac file drops and pointer input share the host y-down conversion" {
+     const host_source = @embedFile("appkit_host.m");
+-    try std.testing.expectEqual(@as(usize, 5), std.mem.count(u8, host_source, "NativeSdkViewLocalYDownPoint("));
++    try std.testing.expectEqual(@as(usize, 11), std.mem.count(u8, host_source, "NativeSdkViewLocalYDownPoint("));
+     try std.testing.expect(std.mem.indexOf(
+         u8,
+         host_source,
+@@ -3434,6 +3446,22 @@ test "mac file drops and pointer input share the host y-down conversion" {
+     try std.testing.expectEqual(input.y, drop.point.?.y);
+ }
+ 
++test "mac file drag lifecycle preserves paths for app validation and uses view-local coordinates" {
++    const host_source = @embedFile("appkit_host.m");
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "- (NSDragOperation)draggingEntered:") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "- (NSDragOperation)draggingUpdated:") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "- (void)draggingExited:") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "- (BOOL)performDragOperation:") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "url.hasDirectoryPath") == null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "canReadObjectForClasses:@[[NSURL class]]") != null);
++    try std.testing.expect(std.mem.indexOf(
++        u8,
++        host_source,
++        "NativeSdkViewLocalYDownPoint(self, [self convertPoint:sender.draggingLocation fromView:nil])",
++    ) != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "NATIVE_SDK_APPKIT_EVENT_FILES_DRAGGED") != null);
++}
++
+ test "mac gpu surface input preserves ime composition cursor" {
+     const label = "canvas";
+     const text = "compose";
+diff --git a/src/platform/root.zig b/src/platform/root.zig
+index 7a2987c026056b44e248314355f07a6d39c5dca2..f735e4c423b25b55bb388a7fd4ebea300650b38e 100644
+--- a/src/platform/root.zig
++++ b/src/platform/root.zig
+@@ -181,6 +181,8 @@ pub const VideoEventKind = types.VideoEventKind;
+ pub const VideoFrameSink = types.VideoFrameSink;
+ pub const max_video_path_bytes = types.max_video_path_bytes;
+ pub const FileDropEvent = types.FileDropEvent;
++pub const FileDragPhase = types.FileDragPhase;
++pub const FileDragEvent = types.FileDragEvent;
+ pub const GpuFrame = types.GpuFrame;
+ pub const GpuSurfaceFrameEvent = types.GpuSurfaceFrameEvent;
+ pub const GpuSurfaceResizeEvent = types.GpuSurfaceResizeEvent;
+diff --git a/src/platform/types.zig b/src/platform/types.zig
+index 5c8a2707f713cf1222d42666e8f73d3f9cf2cf3e..09601b86caf62b7af3e0a02af847770a9ae065b6 100644
+--- a/src/platform/types.zig
++++ b/src/platform/types.zig
+@@ -1878,6 +1878,22 @@ pub const FileDropEvent = struct {
+     paths: []const []const u8 = &.{},
+ };
+ 
++pub const FileDragPhase = enum {
++    entered,
++    updated,
++    exited,
++};
++
++/// Lifecycle for an external OS file drag over a native view. The host
++/// reports view-local coordinates while the pointer is in a view and
++/// preserves the source identity on exit so retained targets can clear.
++pub const FileDragEvent = struct {
++    window_id: WindowId = 1,
++    view_label: []const u8 = "",
++    point: ?geometry.PointF = null,
++    phase: FileDragPhase = .updated,
++};
++
+ pub const GpuFrame = struct {
+     surface_id: ViewId = 0,
+     window_id: WindowId = 1,
+@@ -2598,6 +2614,7 @@ pub const Event = union(enum) {
+     /// this on its own thread so the runtime can drain completion queues
+     /// without ever touching app state off-thread.
+     wake,
++    files_dragged: FileDragEvent,
+     files_dropped: FileDropEvent,
+     gpu_surface_frame: GpuSurfaceFrameEvent,
+     gpu_surface_resized: GpuSurfaceResizeEvent,
+@@ -2633,6 +2650,7 @@ pub const Event = union(enum) {
+             .notification_command => "notification_command",
+             .timer => "timer",
+             .wake => "wake",
++            .files_dragged => "files_dragged",
+             .files_dropped => "files_dropped",
+             .gpu_surface_frame => "gpu_surface_frame",
+             .gpu_surface_resized => "gpu_surface_resized",
+diff --git a/src/platform/windows/root.zig b/src/platform/windows/root.zig
+index 9a559a81ddd029e954c8c3a87a85966985e6fea1..9b5edab358ed6077cf0f46a20728cd4b77e7770d 100644
+--- a/src/platform/windows/root.zig
++++ b/src/platform/windows/root.zig
+@@ -42,6 +42,7 @@ const WindowsEventKind = enum(c_int) {
+     view_focused = 20,
+     tray_command = 21,
+     notification_command = 22,
++    files_dragged = 23,
+ };
+ 
+ const WindowsEvent = extern struct {
+@@ -72,6 +73,7 @@ const WindowsEvent = extern struct {
+     view_label_len: usize,
+     drop_paths: [*]const u8,
+     drop_paths_len: usize,
++    file_drag_phase: c_int,
+     tray_item_id: u32,
+     frame_index: u64,
+     timestamp_ns: u64,
+@@ -622,11 +624,23 @@ fn windowsCallback(context: ?*anyopaque, event: *const WindowsEvent) callconv(.c
+         .shutdown => state.emit(.app_shutdown),
+         .app_activated => state.emit(.app_activated),
+         .app_deactivated => state.emit(.app_deactivated),
++        .files_dragged => state.emit(.{ .files_dragged = .{
++            .window_id = event.window_id,
++            .view_label = event.view_label[0..event.view_label_len],
++            .point = if (event.view_label_len > 0) geometry.PointF.init(@floatCast(event.x), @floatCast(event.y)) else null,
++            .phase = switch (event.file_drag_phase) {
++                0 => .entered,
++                1 => .updated,
++                else => .exited,
++            },
++        } }),
+         .files_dropped => {
+             var paths_buffer: [platform_mod.max_drop_paths][]const u8 = undefined;
+             const paths = platform_mod.splitDropPaths(event.drop_paths[0..event.drop_paths_len], paths_buffer[0..]);
+             state.emit(.{ .files_dropped = .{
+                 .window_id = event.window_id,
++                .view_label = event.view_label[0..event.view_label_len],
++                .point = if (event.view_label_len > 0) geometry.PointF.init(@floatCast(event.x), @floatCast(event.y)) else null,
+                 .paths = paths,
+             } });
+         },
+@@ -2681,6 +2695,24 @@ test "windows webview focus reports the focused child label" {
+     try std.testing.expect(std.mem.indexOf(u8, host_source, "event.view_label = focused->second.label.c_str();") != null);
+ }
+ 
++test "windows file drag lifecycle uses ole routing and logical view coordinates" {
++    const host_source = @embedFile("webview2_host.cpp");
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "class NativeSdkFileDropTarget final : public IDropTarget") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "RegisterDragDrop(window.hwnd, target)") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "RevokeDragDrop(hwnd)") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "OleInitialize(nullptr)") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "OleUninitialize()") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "FILE_ATTRIBUTE_DIRECTORY") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "screen_point.x - rect.left") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "screen_point.y - rect.top") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "dpiForWindow(view.hwnd) / 96.0") != null);
++    try std.testing.expect(std.mem.indexOf(u8, host_source, "event.kind = kFilesDragged") != null);
++    const dropped_paths_at = std.mem.indexOf(u8, host_source, "static std::string droppedFilePaths(HDROP drop)") orelse return error.TestExpectedEqual;
++    const dropped_paths_tail = host_source[dropped_paths_at..];
++    const dropped_paths_end = std.mem.indexOf(u8, dropped_paths_tail, "static bool dataObjectHasFiles") orelse return error.TestExpectedEqual;
++    try std.testing.expect(std.mem.indexOf(u8, dropped_paths_tail[0..dropped_paths_end], "GetFileAttributesW") == null);
++}
++
+ test "windows audio event maps kinds and payload" {
+     var event = std.mem.zeroes(WindowsEvent);
+     event.audio_kind = 1;
+diff --git a/src/platform/windows/webview2_host.cpp b/src/platform/windows/webview2_host.cpp
+index d8118237743f1424f500866cfe5955d77933567b..f152c07ba42563dcac8fb7076e4f780559c5a474 100644
+--- a/src/platform/windows/webview2_host.cpp
++++ b/src/platform/windows/webview2_host.cpp
+@@ -2,7 +2,12 @@
+ #include <shellapi.h>
+ #include <shlobj.h>
+ #include <shobjidl.h>
++#ifndef NATIVE_SDK_CREDENTIALS
++#define NATIVE_SDK_CREDENTIALS 1
++#endif
++#if NATIVE_SDK_CREDENTIALS
+ #include <wincred.h>
++#endif
+ #include <objbase.h>
+ #include <commctrl.h>
+ #include <oleacc.h>
+@@ -140,6 +145,7 @@ enum EventKind {
+     kViewFocused = 20,
+     kTrayCommand = 21,
+     kNotificationCommand = 22,
++    kFilesDragged = 23,
+ };
+ 
+ constexpr uint32_t kShortcutModifierPrimary = 1u << 0;
+@@ -229,6 +235,7 @@ struct WindowsEvent {
+     size_t view_label_len;
+     const char *drop_paths;
+     size_t drop_paths_len;
++    int file_drag_phase;
+     uint32_t tray_item_id;
+     uint64_t frame_index;
+     uint64_t timestamp_ns;
+@@ -730,8 +737,8 @@ struct Host {
+     int appearance_color_scheme = -1;
+     int appearance_reduce_motion = -1;
+     int appearance_high_contrast = -1;
+-    /* Whether the CoInitializeEx in native_sdk_windows_create succeeded
+-     * and native_sdk_windows_destroy owes the balancing CoUninitialize. */
++    /* Whether OleInitialize in native_sdk_windows_create succeeded and
++     * native_sdk_windows_destroy owes the balancing OleUninitialize. */
+     bool com_initialized = false;
+     /* Earliest retained-canvas frame deadline. The handle is lazy and only
+      * armed while a surface has one emission in flight; MsgWait... folds it
+@@ -789,11 +796,13 @@ static std::wstring widen(const std::string &value) {
+     return out;
+ }
+ 
++#if NATIVE_SDK_CREDENTIALS
+ static std::wstring credentialTarget(const std::string &service, const std::string &account) {
+     std::wstring service_wide = widen(service);
+     std::wstring account_wide = widen(account);
+     return L"native-sdk:" + std::to_wstring(service_wide.size()) + L":" + service_wide + account_wide;
+ }
++#endif
+ 
+ static std::string narrow(const std::wstring &value) {
+     if (value.empty()) return std::string();
+@@ -1349,11 +1358,52 @@ static void emit(Host *host, const Window &window, EventKind kind) {
+     host->callback(host->callback_context, &event);
+ }
+ 
+-static void emitFileDrop(Host *host, const Window &window, const std::string &paths) {
++struct FileDropLocation {
++    std::string view_label;
++    double x = 0;
++    double y = 0;
++};
++
++static FileDropLocation fileDropLocation(Host *host, const Window &window, POINTL screen_point) {
++    FileDropLocation location;
++    if (!host || !window.hwnd) return location;
++    for (auto &entry : host->native_views) {
++        NativeView &view = entry.second;
++        if (view.window_id != window.id || view.kind != kViewGpuSurface || !view.hwnd || !view.visible) continue;
++        RECT rect = {};
++        if (!GetWindowRect(view.hwnd, &rect)) continue;
++        if (screen_point.x < rect.left || screen_point.x >= rect.right || screen_point.y < rect.top || screen_point.y >= rect.bottom) continue;
++        const double scale = (double)dpiForWindow(view.hwnd) / 96.0;
++        location.view_label = view.label;
++        location.x = (double)(screen_point.x - rect.left) / scale;
++        location.y = (double)(screen_point.y - rect.top) / scale;
++        return location;
++    }
++    return location;
++}
++
++static void emitFileDragAtLocation(Host *host, const Window &window, const FileDropLocation &location, int phase) {
++    if (!host || !host->callback || location.view_label.empty()) return;
++    WindowsEvent event = {};
++    event.kind = kFilesDragged;
++    event.window_id = window.id;
++    event.x = location.x;
++    event.y = location.y;
++    event.view_label = location.view_label.c_str();
++    event.view_label_len = location.view_label.size();
++    event.file_drag_phase = phase;
++    host->callback(host->callback_context, &event);
++}
++
++static void emitFileDrop(Host *host, const Window &window, const FileDropLocation &location, const std::string &paths) {
+     if (!host || !host->callback || paths.empty()) return;
+     WindowsEvent event = {};
+     event.kind = kFilesDropped;
+     event.window_id = window.id;
++    event.x = location.x;
++    event.y = location.y;
++    event.view_label = location.view_label.c_str();
++    event.view_label_len = location.view_label.size();
+     event.drop_paths = paths.c_str();
+     event.drop_paths_len = paths.size();
+     host->callback(host->callback_context, &event);
+@@ -1376,6 +1426,123 @@ static std::string droppedFilePaths(HDROP drop) {
+     return paths;
+ }
+ 
++static bool dataObjectHasFiles(IDataObject *data) {
++    if (!data) return false;
++    FORMATETC format = { CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
++    return data->QueryGetData(&format) == S_OK;
++}
++
++class NativeSdkFileDropTarget final : public IDropTarget {
++public:
++    NativeSdkFileDropTarget(Host *host, uint64_t window_id) : host_(host), window_id_(window_id) {}
++
++    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void **object) override {
++        if (!object) return E_POINTER;
++        if (iid == IID_IUnknown || iid == IID_IDropTarget) {
++            *object = static_cast<IDropTarget *>(this);
++            AddRef();
++            return S_OK;
++        }
++        *object = nullptr;
++        return E_NOINTERFACE;
++    }
++
++    ULONG STDMETHODCALLTYPE AddRef() override { return ++references_; }
++    ULONG STDMETHODCALLTYPE Release() override {
++        const ULONG remaining = --references_;
++        if (remaining == 0) delete this;
++        return remaining;
++    }
++
++    HRESULT STDMETHODCALLTYPE DragEnter(IDataObject *data, DWORD, POINTL point, DWORD *effect) override {
++        accepts_files_ = dataObjectHasFiles(data);
++        if (!accepts_files_) {
++            if (effect) *effect = DROPEFFECT_NONE;
++            return S_OK;
++        }
++        updateLocation(point, true);
++        if (effect) *effect = DROPEFFECT_COPY;
++        return S_OK;
++    }
++
++    HRESULT STDMETHODCALLTYPE DragOver(DWORD, POINTL point, DWORD *effect) override {
++        if (accepts_files_) updateLocation(point, false);
++        if (effect) *effect = accepts_files_ ? DROPEFFECT_COPY : DROPEFFECT_NONE;
++        return S_OK;
++    }
++
++    HRESULT STDMETHODCALLTYPE DragLeave() override {
++        clearLocation();
++        accepts_files_ = false;
++        return S_OK;
++    }
++
++    HRESULT STDMETHODCALLTYPE Drop(IDataObject *data, DWORD, POINTL point, DWORD *effect) override {
++        if (!accepts_files_ || !data) {
++            clearLocation();
++            if (effect) *effect = DROPEFFECT_NONE;
++            return S_OK;
++        }
++        updateLocation(point, false);
++        FORMATETC format = { CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
++        STGMEDIUM medium = {};
++        std::string paths;
++        if (data->GetData(&format, &medium) == S_OK) {
++            paths = droppedFilePaths(reinterpret_cast<HDROP>(medium.hGlobal));
++            ReleaseStgMedium(&medium);
++        }
++        Window *window = currentWindow();
++        if (window && !last_location_.view_label.empty() && !paths.empty()) {
++            emitFileDrop(host_, *window, last_location_, paths);
++        }
++        const bool accepted = window && !last_location_.view_label.empty() && !paths.empty();
++        clearLocation();
++        accepts_files_ = false;
++        if (effect) *effect = accepted ? DROPEFFECT_COPY : DROPEFFECT_NONE;
++        return S_OK;
++    }
++
++private:
++    Window *currentWindow() {
++        if (!host_) return nullptr;
++        auto found = host_->windows.find(window_id_);
++        return found == host_->windows.end() ? nullptr : &found->second;
++    }
++
++    void updateLocation(POINTL point, bool entered) {
++        Window *window = currentWindow();
++        if (!window) return;
++        const FileDropLocation next = fileDropLocation(host_, *window, point);
++        if (next.view_label != last_location_.view_label) {
++            if (!last_location_.view_label.empty()) emitFileDragAtLocation(host_, *window, last_location_, 2);
++            if (!next.view_label.empty()) emitFileDragAtLocation(host_, *window, next, 0);
++        } else if (!next.view_label.empty()) {
++            emitFileDragAtLocation(host_, *window, next, entered ? 0 : 1);
++        }
++        last_location_ = next;
++    }
++
++    void clearLocation() {
++        Window *window = currentWindow();
++        if (window && !last_location_.view_label.empty()) emitFileDragAtLocation(host_, *window, last_location_, 2);
++        last_location_ = {};
++    }
++
++    std::atomic<ULONG> references_{1};
++    Host *host_ = nullptr;
++    uint64_t window_id_ = 1;
++    bool accepts_files_ = false;
++    FileDropLocation last_location_;
++};
++
++static bool registerFileDropTarget(Host *host, Window &window) {
++    if (!host || !window.hwnd) return false;
++    NativeSdkFileDropTarget *target = new NativeSdkFileDropTarget(host, window.id);
++    const HRESULT result = RegisterDragDrop(window.hwnd, target);
++    target->Release();
++    return SUCCEEDED(result);
++}
++
+ static std::string shortcutKeyFromWParam(WPARAM wparam) {
+     if (wparam >= 'A' && wparam <= 'Z') return std::string(1, static_cast<char>('a' + (wparam - 'A')));
+     if (wparam >= '0' && wparam <= '9') return std::string(1, static_cast<char>(wparam));
+@@ -5762,12 +5929,17 @@ static LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wparam, LPARA
+         case WM_DROPFILES:
+             if (host) {
+                 HDROP drop = reinterpret_cast<HDROP>(wparam);
++                POINT client_point = {};
++                const BOOL has_point = DragQueryPoint(drop, &client_point);
+                 std::string paths = droppedFilePaths(drop);
+                 DragFinish(drop);
+                 if (!paths.empty()) {
+                     for (auto &entry : host->windows) {
+                         if (entry.second.hwnd == hwnd) {
+-                            emitFileDrop(host, entry.second, paths);
++                            POINT screen_point = client_point;
++                            if (has_point) ClientToScreen(hwnd, &screen_point);
++                            const POINTL location_point = { screen_point.x, screen_point.y };
++                            emitFileDrop(host, entry.second, fileDropLocation(host, entry.second, location_point), paths);
+                             break;
+                         }
+                     }
+@@ -5973,6 +6145,7 @@ static LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wparam, LPARA
+             return 0;
+         case WM_DESTROY:
+             if (host) {
++                RevokeDragDrop(hwnd);
+                 for (auto &entry : host->windows) {
+                     if (entry.second.hwnd == hwnd) {
+                         destroyNativeViewsForWindow(host, entry.first);
+@@ -6078,8 +6251,8 @@ static bool createNativeWindow(Host *host, Window &window) {
+         host->instance,
+         host);
+     if (!hwnd) return false;
+-    DragAcceptFiles(hwnd, TRUE);
+     window.hwnd = hwnd;
++    if (!registerFileDropTarget(host, window)) DragAcceptFiles(hwnd, TRUE);
+     window.deferred_show_started_ms = window.show_on_first_present ? GetTickCount64() : 0;
+     if (window.click_through && !window.transparent &&
+         !SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA)) {
+@@ -6135,15 +6308,10 @@ Host *native_sdk_windows_create(const char *app_name, size_t app_name_len, const
+     InitCommonControlsEx(&controls);
+ 
+     Host *host = new Host();
+-    /* The WebView2 environment factory requires a single-threaded
+-     * apartment on the calling thread; without one it fails with
+-     * CO_E_NOTINITIALIZED. Create, run, and destroy all execute on the
+-     * app's main thread, so one init here pairs with the CoUninitialize
+-     * at the end of native_sdk_windows_destroy — after the controllers
+-     * are closed. S_FALSE (already initialized) still pairs;
+-     * RPC_E_CHANGED_MODE (an MTA got there first) leaves nothing to
+-     * balance. */
+-    host->com_initialized = SUCCEEDED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
++    /* OLE drag/drop and WebView2 share the main thread's STA. Create,
++     * run, and destroy all execute on that thread, so this pairs with
++     * OleUninitialize after the windows and controllers close. */
++    host->com_initialized = SUCCEEDED(OleInitialize(nullptr));
+     /* One hardware Direct2D/DirectWrite resource domain for every canvas
+      * child. Creation also requires the in-memory font and constrained
+      * fallback seams: without them packet text cannot match engine layout,
+@@ -6202,7 +6370,7 @@ void native_sdk_windows_destroy(Host *host) {
+     gpuSurfaceDestroyFrameWakeTimer(host);
+     const bool com_initialized = host->com_initialized;
+     delete host;
+-    if (com_initialized) CoUninitialize();
++    if (com_initialized) OleUninitialize();
+ }
+ 
+ void native_sdk_windows_run(Host *host, EventCallback callback, void *context) {
+@@ -7610,6 +7778,7 @@ int native_sdk_windows_clear_recent_documents(Host *host) {
+ }
+ 
+ int native_sdk_windows_set_credential(Host *host, const char *service, size_t service_len, const char *account, size_t account_len, const char *secret, size_t secret_len) {
++#if NATIVE_SDK_CREDENTIALS
+     (void)host;
+     if (!service || service_len == 0 || !account || account_len == 0 || (!secret && secret_len > 0) || secret_len > UINT32_MAX) return 0;
+     if (secret_len > CRED_MAX_CREDENTIAL_BLOB_SIZE) return -4;
+@@ -7638,9 +7807,14 @@ int native_sdk_windows_set_credential(Host *host, const char *service, size_t se
+     FreeLibrary(advapi);
+     if (ok) return 1;
+     return error == ERROR_ACCESS_DENIED ? -3 : -1;
++#else
++    (void)host; (void)service; (void)service_len; (void)account; (void)account_len; (void)secret; (void)secret_len;
++    return 0;
++#endif
+ }
+ 
+ size_t native_sdk_windows_get_credential(Host *host, const char *service, size_t service_len, const char *account, size_t account_len, char *buffer, size_t buffer_len) {
++#if NATIVE_SDK_CREDENTIALS
+     (void)host;
+     if (!service || service_len == 0 || !account || account_len == 0 || (!buffer && buffer_len > 0)) return SIZE_MAX - 1;
+     HMODULE advapi = LoadLibraryW(L"advapi32.dll");
+@@ -7672,9 +7846,14 @@ size_t native_sdk_windows_get_credential(Host *host, const char *service, size_t
+     cred_free(credential);
+     FreeLibrary(advapi);
+     return secret_len;
++#else
++    (void)host; (void)service; (void)service_len; (void)account; (void)account_len; (void)buffer; (void)buffer_len;
++    return SIZE_MAX - 1;
++#endif
+ }
+ 
+ int native_sdk_windows_delete_credential(Host *host, const char *service, size_t service_len, const char *account, size_t account_len) {
++#if NATIVE_SDK_CREDENTIALS
+     (void)host;
+     if (!service || service_len == 0 || !account || account_len == 0) return 0;
+     HMODULE advapi = LoadLibraryW(L"advapi32.dll");
+@@ -7692,6 +7871,10 @@ int native_sdk_windows_delete_credential(Host *host, const char *service, size_t
+     if (ok) return 1;
+     if (error == ERROR_NOT_FOUND) return 0;
+     return error == ERROR_ACCESS_DENIED ? -3 : -1;
++#else
++    (void)host; (void)service; (void)service_len; (void)account; (void)account_len;
++    return -1;
++#endif
+ }
+ 
+ size_t native_sdk_windows_format_local_time(Host *host, int64_t timestamp_ms, int style, char *buffer, size_t buffer_len) {
+diff --git a/src/primitives/canvas/events.zig b/src/primitives/canvas/events.zig
+index c8591c09fb59007f9cc608ed922fc17ac790b2d5..3fbcc6c42cf141c3ac47339e8fc1e3cc975ba3a4 100644
+--- a/src/primitives/canvas/events.zig
++++ b/src/primitives/canvas/events.zig
+@@ -415,6 +415,17 @@ pub const WidgetFileDropEvent = struct {
+     paths: []const []const u8 = &.{},
+ };
+ 
++pub const WidgetFileDragPhase = enum {
++    entered,
++    updated,
++    exited,
++};
++
++pub const WidgetFileDragEvent = struct {
++    point: ?geometry.PointF = null,
++    phase: WidgetFileDragPhase = .updated,
++};
++
+ pub const WidgetDragPhase = enum {
+     change,
+     end,
+diff --git a/src/primitives/canvas/root.zig b/src/primitives/canvas/root.zig
+index e6d7348cdddf0b2cff1df704e2bb8a212626b1bc..7db39140db82ef8338fb047591456fbfb8a2d37a 100644
+--- a/src/primitives/canvas/root.zig
++++ b/src/primitives/canvas/root.zig
+@@ -629,6 +629,8 @@ pub const WidgetControlIntentKind = event_model.WidgetControlIntentKind;
+ pub const WidgetControlIntent = event_model.WidgetControlIntent;
+ pub const WidgetSemanticAction = event_model.WidgetSemanticAction;
+ pub const WidgetFileDropEvent = event_model.WidgetFileDropEvent;
++pub const WidgetFileDragPhase = event_model.WidgetFileDragPhase;
++pub const WidgetFileDragEvent = event_model.WidgetFileDragEvent;
+ pub const WidgetDragPhase = event_model.WidgetDragPhase;
+ pub const WidgetDragEvent = event_model.WidgetDragEvent;
+ pub const WidgetEventPhase = event_model.WidgetEventPhase;
+diff --git a/src/primitives/canvas/ui.zig b/src/primitives/canvas/ui.zig
+index 6e5240ad546c635ffdd4c0028171b044f57068a5..8630f0ccc7f16718ad706c4051841d8c6cd4f11b 100644
+--- a/src/primitives/canvas/ui.zig
++++ b/src/primitives/canvas/ui.zig
+@@ -494,6 +494,10 @@ pub fn Ui(comptime Msg: type) type {
+         /// Null outside an app loop (bare builders, tests that stamp
+         /// grids by hand), where terminals render unbound.
+         terminal_lookup: ?TerminalGridLookup = null,
++        /// Stable widget ids that accept external OS file drags and drops.
++        /// UiApp stamps these before a build so compiled markup can expose
++        /// a drop target without requiring a newer markup vocabulary.
++        file_drop_targets: []const ObjectId = &.{},
+         /// The `<video src>` declaration this build recorded (see
+         /// `video`): last-wins, mirroring `loadVideo`'s replace
+         /// semantics — one player is the whole playback surface. The
+@@ -3458,6 +3462,12 @@ pub fn Ui(comptime Msg: type) type {
+             // same way a stringly `command` does for engine-owned dispatch.
+             if (node.on_press != null) widget.semantics.actions.press = true;
+             if (node.on_drag != null) widget.semantics.actions.drag = true;
++            for (self.file_drop_targets) |target_id| {
++                if (widget.id == target_id) {
++                    widget.semantics.actions.drop_files = true;
++                    break;
++                }
++            }
+             // A double-press handler makes the element pressable too:
+             // the double-click's first release must land somewhere, and
+             // an element that acts on double click without claiming
+diff --git a/src/primitives/canvas/widget_access.zig b/src/primitives/canvas/widget_access.zig
+index 0a82b095d612b93281b7e14947392890027b313b..07284f4a014feda945d5c7ea97bf5d29632bb460 100644
+--- a/src/primitives/canvas/widget_access.zig
++++ b/src/primitives/canvas/widget_access.zig
+@@ -73,7 +73,7 @@ pub fn isDragSource(widget: Widget) bool {
+ /// `canvasWidgetRuntimeHitTarget`, both markup engines, and (via a name
+ /// list kept in sync by a test in ui_markup_view_tests.zig) the markup
+ /// validator all derive from it. The widget-level predicate is
+-/// `isHitTarget`: a bound press/toggle/drag handler (stamped into
++/// `isHitTarget`: a bound press/toggle/drag/file-drop handler (stamped into
+ /// `semantics.actions` by the builder and both markup engines) makes ANY
+ /// widget a hit target, so `on_press` or `on_drag` on a row/stack/icon
+ /// works across the element's whole frame.
+@@ -86,7 +86,7 @@ pub fn widgetKindHitTarget(kind: WidgetKind) bool {
+ 
+ pub fn isHitTarget(widget: Widget) bool {
+     if (widget.id == 0 or widget.state.disabled) return false;
+-    if (widget.semantics.actions.press or widget.semantics.actions.toggle or widget.semantics.actions.drag) return true;
++    if (widget.semantics.actions.press or widget.semantics.actions.toggle or widget.semantics.actions.drag or widget.semantics.actions.drop_files) return true;
+     if (widget.window_drag) return true;
+     // A chart with hover details opted in is hoverable (the runtime
+     // tracks the pointer over it to snap the detail card to the nearest
+diff --git a/src/primitives/canvas/widget_layout_tests.zig b/src/primitives/canvas/widget_layout_tests.zig
+index 32ca1a7c3fb47e4f5b76fa5b030d085d17d876dc..ad816df9c52c3f28dc0da283e3ae22769300de89 100644
+--- a/src/primitives/canvas/widget_layout_tests.zig
++++ b/src/primitives/canvas/widget_layout_tests.zig
+@@ -2493,6 +2493,43 @@ test "widget file drop route targets explicit drop semantics" {
+     return error.TestUnexpectedResult;
+ }
+ 
++test "widget file drag route tracks the explicit drop target" {
++    const root = Widget{
++        .id = 1,
++        .kind = .panel,
++        .children = &.{.{
++            .id = 2,
++            .kind = .row,
++            .frame = geometry.RectF.init(8, 8, 120, 44),
++            .semantics = .{ .actions = .{ .drop_files = true } },
++        }},
++    };
++
++    var nodes: [3]WidgetLayoutNode = undefined;
++    const layout = try layoutWidgetTree(root, geometry.RectF.init(0, 0, 160, 80), &nodes);
++    var route_entries: [3]WidgetEventRouteEntry = undefined;
++
++    const entered = try layout.routeFileDragEvent(.{
++        .point = geometry.PointF.init(20, 20),
++        .phase = .entered,
++    }, &route_entries);
++    try std.testing.expectEqual(@as(ObjectId, 2), entered.target.?.id);
++    try std.testing.expectEqual(@as(usize, 3), entered.entries.len);
++    try expectRouteEntry(entered.entries[0], .capture, 1);
++    try expectRouteEntry(entered.entries[1], .target, 2);
++    try expectRouteEntry(entered.entries[2], .bubble, 1);
++
++    const outside = try layout.routeFileDragEvent(.{
++        .point = geometry.PointF.init(150, 70),
++        .phase = .updated,
++    }, &route_entries);
++    try std.testing.expect(outside.target == null);
++
++    const exited = try layout.routeFileDragEvent(.{ .phase = .exited }, &route_entries);
++    try std.testing.expect(exited.target == null);
++    try std.testing.expectEqual(@as(usize, 0), exited.entries.len);
++}
++
+ test "widget file drop route ignores missing paths disabled and non-drop targets" {
+     const root = Widget{
+         .id = 1,
+diff --git a/src/primitives/canvas/widget_routing.zig b/src/primitives/canvas/widget_routing.zig
+index b1ec9920df2926bb6277232530d2535824792b9a..247caf740814d7542ae744d0ffb8290e03109dcc 100644
+--- a/src/primitives/canvas/widget_routing.zig
++++ b/src/primitives/canvas/widget_routing.zig
+@@ -20,6 +20,7 @@ const WidgetKind = widget_model.WidgetKind;
+ const WidgetPointerEvent = event_model.WidgetPointerEvent;
+ const WidgetKeyboardEvent = event_model.WidgetKeyboardEvent;
+ const WidgetFileDropEvent = event_model.WidgetFileDropEvent;
++const WidgetFileDragEvent = event_model.WidgetFileDragEvent;
+ const WidgetDragEvent = event_model.WidgetDragEvent;
+ const WidgetEventPhase = event_model.WidgetEventPhase;
+ const WidgetEventRouteEntry = event_model.WidgetEventRouteEntry;
+@@ -316,6 +317,13 @@ pub fn routeWidgetFileDropEvent(layout: anytype, event: WidgetFileDropEvent, out
+     return .{ .target = widgetHitFromNode(layout.nodes[target_index], target_index), .entries = entries };
+ }
+ 
++pub fn routeWidgetFileDragEvent(layout: anytype, event: WidgetFileDragEvent, output: []WidgetEventRouteEntry) Error!WidgetEventRoute {
++    const point = event.point orelse return .{ .entries = output[0..0] };
++    const target_index = widgetDropTargetIndexAtPoint(layout, point) orelse return .{ .entries = output[0..0] };
++    const entries = try routeWidgetEventPath(layout, target_index, output);
++    return .{ .target = widgetHitFromNode(layout.nodes[target_index], target_index), .entries = entries };
++}
++
+ pub fn routeWidgetDragEvent(layout: anytype, event: WidgetDragEvent, output: []WidgetEventRouteEntry) Error!WidgetEventRoute {
+     const target_index = widgetDragSourceIndex(layout, event.source_id) orelse return .{ .entries = output[0..0] };
+     const entries = try routeWidgetEventPath(layout, target_index, output);
+diff --git a/src/primitives/canvas/widget_runtime.zig b/src/primitives/canvas/widget_runtime.zig
+index a9800997e88d22222c4970d33c57b064c59237a9..113ba5130cedc1d110ffd75767f2fa47f1d93e50 100644
+--- a/src/primitives/canvas/widget_runtime.zig
++++ b/src/primitives/canvas/widget_runtime.zig
+@@ -29,6 +29,7 @@ const WidgetHit = event_model.WidgetHit;
+ const WidgetPointerEvent = event_model.WidgetPointerEvent;
+ const WidgetKeyboardEvent = event_model.WidgetKeyboardEvent;
+ const WidgetFileDropEvent = event_model.WidgetFileDropEvent;
++const WidgetFileDragEvent = event_model.WidgetFileDragEvent;
+ const WidgetDragEvent = event_model.WidgetDragEvent;
+ const WidgetEventRouteEntry = event_model.WidgetEventRouteEntry;
+ const WidgetEventRoute = event_model.WidgetEventRoute;
+@@ -150,6 +151,10 @@ pub const WidgetLayoutTree = struct {
+         return widget_routing.routeWidgetFileDropEvent(self, event, output);
+     }
+ 
++    pub fn routeFileDragEvent(self: WidgetLayoutTree, event: WidgetFileDragEvent, output: []WidgetEventRouteEntry) Error!WidgetEventRoute {
++        return widget_routing.routeWidgetFileDragEvent(self, event, output);
++    }
++
+     pub fn routeDragEvent(self: WidgetLayoutTree, event: WidgetDragEvent, output: []WidgetEventRouteEntry) Error!WidgetEventRoute {
+         return widget_routing.routeWidgetDragEvent(self, event, output);
+     }
+diff --git a/src/root.zig b/src/root.zig
+index 2da935a516e575dc806fc9790f46ad8f35af386f..989e0b49e8f0696e32969f9e1745fea0390ecd9d 100644
+--- a/src/root.zig
++++ b/src/root.zig
+@@ -36,6 +36,8 @@ pub const TestHarness = runtime.TestHarness;
+ pub const UiApp = runtime.UiApp;
+ pub const UiAppWithFeatures = runtime.UiAppWithFeatures;
+ pub const UiAppFeatures = runtime.UiAppFeatures;
++pub const FileDragTargetEvent = runtime.FileDragTargetEvent;
++pub const FileDropTargetEvent = runtime.FileDropTargetEvent;
+ pub const Effects = runtime.Effects;
+ pub const EffectLine = runtime.EffectLine;
+ pub const EffectExit = runtime.EffectExit;
+@@ -92,6 +94,7 @@ pub const max_effect_stdin_bytes = runtime.max_effect_stdin_bytes;
+ pub const max_effect_line_bytes = runtime.max_effect_line_bytes;
+ pub const max_effect_line_bytes_ceiling = runtime.max_effect_line_bytes_ceiling;
+ pub const max_effect_collect_bytes = runtime.max_effect_collect_bytes;
++pub const max_effect_collect_bytes_ceiling = runtime.max_effect_collect_bytes_ceiling;
+ pub const max_effect_stderr_tail_bytes = runtime.max_effect_stderr_tail_bytes;
+ pub const max_effect_queue_entries = runtime.max_effect_queue_entries;
+ pub const max_effect_url_bytes = runtime.max_effect_url_bytes;
+diff --git a/src/runtime/api.zig b/src/runtime/api.zig
+index 50dbbcc4f7b402cb517d4a049e508f7e4f73ad6c..d88d35aefe1f2812ec6f372972708995a2c8c0e7 100644
+--- a/src/runtime/api.zig
++++ b/src/runtime/api.zig
+@@ -153,6 +153,33 @@ pub const CanvasWidgetFileDropEvent = struct {
+     route: []const canvas.WidgetEventRouteEntry = &.{},
+ };
+ 
++pub const CanvasWidgetFileDragEvent = struct {
++    window_id: platform.WindowId = 1,
++    view_label: []const u8,
++    drag: canvas.WidgetFileDragEvent,
++    target: ?canvas.WidgetHit = null,
++    route: []const canvas.WidgetEventRouteEntry = &.{},
++};
++
++/// App-facing file-drag lifecycle after the runtime resolves the nearest
++/// marked canvas drop target.
++pub const FileDragTargetEvent = struct {
++    window_id: platform.WindowId = 1,
++    view_label: []const u8,
++    point: ?geometry.PointF = null,
++    phase: platform.FileDragPhase,
++    target_id: ?canvas.ObjectId = null,
++};
++
++/// App-facing final drop with the resolved target and borrowed local paths.
++pub const FileDropTargetEvent = struct {
++    window_id: platform.WindowId = 1,
++    view_label: []const u8,
++    point: geometry.PointF,
++    paths: []const []const u8,
++    target_id: canvas.ObjectId,
++};
++
+ pub const CanvasWidgetDragEvent = struct {
+     window_id: platform.WindowId = 1,
+     view_label: []const u8,
+@@ -348,6 +375,7 @@ pub const Event = union(enum) {
+     canvas_widget_keyboard: CanvasWidgetKeyboardEvent,
+     canvas_widget_scroll: CanvasWidgetScrollEvent,
+     canvas_widget_file_drop: CanvasWidgetFileDropEvent,
++    canvas_widget_file_drag: CanvasWidgetFileDragEvent,
+     canvas_widget_drag: CanvasWidgetDragEvent,
+     canvas_widget_context_menu: CanvasWidgetContextMenuEvent,
+     canvas_widget_context_menu_shown: CanvasWidgetContextMenuShownEvent,
+@@ -378,6 +406,7 @@ pub const Event = union(enum) {
+             .canvas_widget_keyboard => "canvas_widget_keyboard",
+             .canvas_widget_scroll => "canvas_widget_scroll",
+             .canvas_widget_file_drop => "canvas_widget_file_drop",
++            .canvas_widget_file_drag => "canvas_widget_file_drag",
+             .canvas_widget_drag => "canvas_widget_drag",
+             .canvas_widget_context_menu => "canvas_widget_context_menu",
+             .canvas_widget_context_menu_shown => "canvas_widget_context_menu_shown",
+diff --git a/src/runtime/canvas_widget_event_tests.zig b/src/runtime/canvas_widget_event_tests.zig
+index 99123ead69d3d333a77983020a96a3a2ea8f9b9e..f51b4766e633da9a1751373ae1b90793850ad53a 100644
+--- a/src/runtime/canvas_widget_event_tests.zig
++++ b/src/runtime/canvas_widget_event_tests.zig
+@@ -3375,7 +3375,9 @@ test "runtime dispatches automation canvas widget actions" {
+         .{ .id = 5, .kind = .text_field, .frame = geometry.RectF.init(10, 122, 150, 32), .text = "Draft" },
+         .{ .id = 6, .kind = .list_item, .frame = geometry.RectF.init(170, 10, 120, 32), .text = "Inbox" },
+         .{ .id = 7, .kind = .scroll_view, .frame = geometry.RectF.init(170, 52, 120, 48), .children = &scroll_items },
+-        .{ .id = 11, .kind = .button, .frame = geometry.RectF.init(170, 110, 120, 32), .text = "Upload", .semantics = .{ .actions = .{ .drop_files = true } } },
++        // Structural drop zones must remain targetable through the same
++        // automation/accessibility action exposed in the snapshot.
++        .{ .id = 11, .kind = .stack, .frame = geometry.RectF.init(170, 110, 120, 32), .text = "Upload", .semantics = .{ .actions = .{ .drop_files = true } } },
+         .{ .id = 12, .kind = .menu_item, .frame = geometry.RectF.init(170, 146, 120, 28), .text = "Archive" },
+     };
+     var nodes: [13]canvas.WidgetLayoutNode = undefined;
+diff --git a/src/runtime/canvas_widget_events.zig b/src/runtime/canvas_widget_events.zig
+index 341c8d71a348efafe81a46f7c9858c5e1bc0779b..a30168fb67a60b06dcf19f72b04c4fa28aa9fd00 100644
+--- a/src/runtime/canvas_widget_events.zig
++++ b/src/runtime/canvas_widget_events.zig
+@@ -17,6 +17,7 @@ const GpuSurfaceInputEvent = runtime_api.GpuSurfaceInputEvent;
+ const CanvasWidgetPointerEvent = runtime_api.CanvasWidgetPointerEvent;
+ const CanvasWidgetKeyboardEvent = runtime_api.CanvasWidgetKeyboardEvent;
+ const CanvasWidgetFileDropEvent = runtime_api.CanvasWidgetFileDropEvent;
++const CanvasWidgetFileDragEvent = runtime_api.CanvasWidgetFileDragEvent;
+ const CanvasWidgetDragEvent = runtime_api.CanvasWidgetDragEvent;
+ const validateViewLabel = validation.validateViewLabel;
+ const platformCursorFromCanvas = widget_bridge.platformCursorFromCanvas;
+@@ -278,6 +279,27 @@ pub fn RuntimeCanvasWidgetEvents(comptime Runtime: type) type {
+             };
+         }
+ 
++        pub fn routeCanvasWidgetFileDrag(self: *const Runtime, drag: platform.FileDragEvent, output: []canvas.WidgetEventRouteEntry) anyerror!CanvasWidgetFileDragEvent {
++            try validateRuntimeViewParent(self, drag.window_id);
++            if (drag.view_label.len == 0) return error.ViewNotFound;
++            try validateViewLabel(drag.view_label);
++            const index = runtimeFindViewIndex(self, drag.window_id, drag.view_label) orelse return error.ViewNotFound;
++            if (self.views[index].kind != .gpu_surface) return error.InvalidViewOptions;
++
++            const widget_drag = canvas.WidgetFileDragEvent{
++                .point = drag.point,
++                .phase = @enumFromInt(@intFromEnum(drag.phase)),
++            };
++            const route = try self.views[index].widgetLayoutTree().routeFileDragEvent(widget_drag, output);
++            return .{
++                .window_id = drag.window_id,
++                .view_label = self.views[index].label,
++                .drag = widget_drag,
++                .target = route.target,
++                .route = route.entries,
++            };
++        }
++
+         pub fn routeCanvasWidgetDragInput(self: *Runtime, input_event: GpuSurfaceInputEvent, output: []canvas.WidgetEventRouteEntry) anyerror!?CanvasWidgetDragEvent {
+             try validateRuntimeViewParent(self, input_event.window_id);
+             try validateViewLabel(input_event.label);
+diff --git a/src/runtime/core.zig b/src/runtime/core.zig
+index e7803998ef96b908a553f85f9224249466975a88..fd4905be587bdaeef25e7c76eb5f192ffa0b53c6 100644
+--- a/src/runtime/core.zig
++++ b/src/runtime/core.zig
+@@ -148,6 +148,9 @@ pub const CanvasPresentationResult = runtime_api.CanvasPresentationResult;
+ pub const CanvasWidgetAccessibilityActionKind = runtime_api.CanvasWidgetAccessibilityActionKind;
+ pub const CanvasWidgetAccessibilityAction = runtime_api.CanvasWidgetAccessibilityAction;
+ pub const CanvasWidgetFileDropEvent = runtime_api.CanvasWidgetFileDropEvent;
++pub const CanvasWidgetFileDragEvent = runtime_api.CanvasWidgetFileDragEvent;
++pub const FileDragTargetEvent = runtime_api.FileDragTargetEvent;
++pub const FileDropTargetEvent = runtime_api.FileDropTargetEvent;
+ pub const CanvasWidgetDragEvent = runtime_api.CanvasWidgetDragEvent;
+ pub const CanvasWidgetContextMenuEvent = runtime_api.CanvasWidgetContextMenuEvent;
+ pub const CanvasWidgetContextMenuShownEvent = runtime_api.CanvasWidgetContextMenuShownEvent;
+@@ -999,6 +1002,7 @@ pub const Runtime = struct {
+     pub const routeCanvasWidgetKeyboardInput = CanvasWidgetEventMethods.routeCanvasWidgetKeyboardInput;
+     pub const routeCanvasWidgetTextInput = CanvasWidgetEventMethods.routeCanvasWidgetTextInput;
+     pub const routeCanvasWidgetFileDrop = CanvasWidgetEventMethods.routeCanvasWidgetFileDrop;
++    pub const routeCanvasWidgetFileDrag = CanvasWidgetEventMethods.routeCanvasWidgetFileDrag;
+     pub const routeCanvasWidgetDragInput = CanvasWidgetEventMethods.routeCanvasWidgetDragInput;
+     pub const startCanvasWidgetWindowDragFromPointer = CanvasWidgetEventMethods.startCanvasWidgetWindowDragFromPointer;
+     const updateCanvasWidgetFocusFromPointer = CanvasWidgetEventMethods.updateCanvasWidgetFocusFromPointer;
+diff --git a/src/runtime/effects.zig b/src/runtime/effects.zig
+index ce420b00387af718d629dca4b5fc04d46b7247af..e4a4b590701d5e4734baa57a9683aa2e0c3e5d1f 100644
+--- a/src/runtime/effects.zig
++++ b/src/runtime/effects.zig
+@@ -126,6 +126,11 @@ pub const max_effect_line_bytes_ceiling: usize = 256 * 1024;
+ /// `output_truncated = true`. Heap-allocated per accepted collect spawn,
+ /// like a fetch's body buffer.
+ pub const max_effect_collect_bytes: usize = 512 * 1024;
++/// Hard ceiling for per-effect `max_collect_bytes` overrides. The default
++/// remains deliberately small; apps carrying an independently bounded local
++/// protocol can opt one collect spawn into a larger buffer without inflating
++/// every subprocess capture.
++pub const max_effect_collect_bytes_ceiling: usize = 16 * 1024 * 1024 + 4;
+ /// Stderr tail bytes kept per `.collect` spawn: the LAST bytes the child
+ /// wrote, delivered on the exit Msg (diagnose failures without an sh
+ /// re-route). Earlier bytes are discarded and flagged through
+@@ -540,8 +545,8 @@ pub const EffectExit = struct {
+     /// Whole collected stdout for `.collect` spawns; `""` for `.lines`
+     /// spawns and for cancelled/rejected exits.
+     output: []const u8 = "",
+-    /// stdout exceeded `max_effect_collect_bytes`: `output` is its first
+-    /// bytes and the rest was discarded. Never silent.
++    /// stdout exceeded the spawn's effective collect bound: `output` is its
++    /// first bytes and the rest was discarded. Never silent.
+     output_truncated: bool = false,
+     /// The last `max_effect_stderr_tail_bytes` of the child's stderr for
+     /// `.collect` spawns (`""` for `.lines`, whose stderr is ignored).
+@@ -2976,6 +2981,11 @@ pub fn Effects(comptime Msg: type) type {
+             /// delivers both on the exit Msg — `on_line` is never called
+             /// for a collect spawn.
+             output: EffectOutputMode = .lines,
++            /// Per-spawn stdout bound for `.collect` output. Keep the
++            /// default for ordinary commands; independently framed local
++            /// protocols may raise it through
++            /// `max_effect_collect_bytes_ceiling`. Ignored by `.lines`.
++            max_collect_bytes: usize = max_effect_collect_bytes,
+             /// Per-spawn delivered-line bound for `.lines` output.
+             /// Line-oriented agent CLIs (`claude -p --output-format
+             /// stream-json`) emit whole events as single NDJSON lines
+@@ -2998,6 +3008,7 @@ pub fn Effects(comptime Msg: type) type {
+             argv: []const []const u8,
+             stdin: []const u8,
+             output: EffectOutputMode = .lines,
++            max_collect_bytes: usize = max_effect_collect_bytes,
+             max_line_bytes: usize = max_effect_line_bytes,
+         };
+ 
+@@ -4559,6 +4570,9 @@ pub fn Effects(comptime Msg: type) type {
+             line_buffer: ?[]u8 = null,
+             // ---- collect-mode fields (kind == .spawn, output == .collect) ----
+             output_mode: EffectOutputMode = .lines,
++            /// Effective bound used to allocate this collect spawn's two
++            /// lazy buffers (channel delivery and worker accumulation).
++            collect_limit: usize = max_effect_collect_bytes,
+             /// Heap buffer per accepted `.collect` spawn
+             /// (`max_effect_collect_bytes` of stdout space). Owned by the
+             /// slot until the drain delivers the exit (taken into
+@@ -6795,6 +6809,9 @@ pub fn Effects(comptime Msg: type) type {
+             if (options.max_line_bytes == 0 or options.max_line_bytes > max_effect_line_bytes_ceiling) {
+                 return self.reject(options);
+             }
++            if (options.max_collect_bytes == 0 or options.max_collect_bytes > max_effect_collect_bytes_ceiling) {
++                return self.reject(options);
++            }
+             if (self.keyOccupiedUntilDelivery(options.key)) return self.reject(options);
+             const slot_index = self.findIdleSlot() orelse return self.reject(options);
+ 
+@@ -6831,6 +6848,7 @@ pub fn Effects(comptime Msg: type) type {
+                     return self.reject(options);
+             }
+             slot.output_mode = options.output;
++            slot.collect_limit = options.max_collect_bytes;
+             slot.collect_len = 0;
+             slot.collect_truncated = false;
+             slot.stderr_total = 0;
+@@ -6848,7 +6866,7 @@ pub fn Effects(comptime Msg: type) type {
+                 // hands it to `update` (real mode receives the bytes
+                 // from the worker context at commit; fake mode
+                 // accumulates into it directly).
+-                slot.collect_buffer = self.allocator.alloc(u8, max_effect_collect_bytes) catch {
++                slot.collect_buffer = self.allocator.alloc(u8, options.max_collect_bytes) catch {
+                     if (slot.stdin_buffer) |buffer| {
+                         self.allocator.free(buffer);
+                         slot.stdin_buffer = null;
+@@ -6904,7 +6922,7 @@ pub fn Effects(comptime Msg: type) type {
+             }
+             @memcpy(ctx.stdin_storage[0..stdin_bytes.len], stdin_bytes);
+             if (options.output == .collect) {
+-                ctx.collect_buffer = process_allocator.alloc(u8, max_effect_collect_bytes) catch {
++                ctx.collect_buffer = process_allocator.alloc(u8, options.max_collect_bytes) catch {
+                     process_allocator.destroy(ctx);
+                     self.releaseSpawnSlot(slot);
+                     return self.reject(options);
+@@ -12726,6 +12744,7 @@ pub fn Effects(comptime Msg: type) type {
+                         .argv = slot.argv(),
+                         .stdin = slot.stdinBytes(),
+                         .output = slot.output_mode,
++                        .max_collect_bytes = slot.collect_limit,
+                         .max_line_bytes = slot.line_limit,
+                     };
+                 }
+diff --git a/src/runtime/effects_tests.zig b/src/runtime/effects_tests.zig
+index 1dff63d9ebd26831d1dba9ec19645d0db29fd11e..f5ddc67a89592ddc1bf7b14e5cf5cd6356ca23ef 100644
+--- a/src/runtime/effects_tests.zig
++++ b/src/runtime/effects_tests.zig
+@@ -113,6 +113,7 @@ const stream_key: u64 = 42;
+ var test_argv: []const []const u8 = &.{};
+ var test_stdin: ?[]const u8 = null;
+ var test_max_line_bytes: usize = effects_mod.max_effect_line_bytes;
++var test_max_collect_bytes: usize = effects_mod.max_effect_collect_bytes;
+ 
+ fn streamUpdate(model: *StreamModel, msg: StreamMsg, fx: *StreamEffects) void {
+     switch (msg) {
+@@ -140,6 +141,7 @@ fn collectUpdate(model: *StreamModel, msg: StreamMsg, fx: *StreamEffects) void {
+             .argv = test_argv,
+             .stdin = test_stdin,
+             .output = .collect,
++            .max_collect_bytes = test_max_collect_bytes,
+             .on_line = StreamEffects.lineMsg(.line),
+             .on_exit = StreamEffects.exitMsg(.done),
+         }),
+@@ -549,6 +551,49 @@ test "fake executor collect mode truncates over-bound output and stderr loudly"
+     try std.testing.expectEqual(expected_hash, h.app_state.model.stderr_hash);
+ }
+ 
++test "a raised per-spawn collect bound preserves a framed local response" {
++    var h = try Harness.createWith(collectUpdate);
++    defer h.destroy();
++    const fx = &h.app_state.effects;
++    fx.executor = .fake;
++
++    test_argv = &.{"local-core"};
++    test_stdin = null;
++    test_max_collect_bytes = effects_mod.max_effect_collect_bytes + 128 * 1024;
++    defer test_max_collect_bytes = effects_mod.max_effect_collect_bytes;
++    try h.app_state.dispatch(&h.harness.runtime, 1, .start);
++    const request = fx.pendingSpawnAt(0).?;
++    try std.testing.expectEqual(test_max_collect_bytes, request.max_collect_bytes);
++
++    const response = try std.testing.allocator.alloc(u8, effects_mod.max_effect_collect_bytes + 64 * 1024);
++    defer std.testing.allocator.free(response);
++    @memset(response, 'r');
++    try fx.feedLine(stream_key, response);
++    try fx.feedExit(stream_key, 0);
++    try h.drainWakes();
++    try std.testing.expectEqual(response.len + 1, h.app_state.model.output_len);
++    try std.testing.expect(!h.app_state.model.output_truncated);
++}
++
++test "per-spawn collect bounds above the ceiling or zero are rejected loudly" {
++    var h = try Harness.createWith(collectUpdate);
++    defer h.destroy();
++    h.app_state.effects.executor = .fake;
++
++    test_argv = &.{"local-core"};
++    test_stdin = null;
++    test_max_collect_bytes = effects_mod.max_effect_collect_bytes_ceiling + 1;
++    defer test_max_collect_bytes = effects_mod.max_effect_collect_bytes;
++    try h.app_state.dispatch(&h.harness.runtime, 1, .start);
++    try h.drainWakes();
++    try std.testing.expectEqual(effects_mod.EffectExitReason.rejected, h.app_state.model.exit_reason.?);
++
++    test_max_collect_bytes = 0;
++    try h.app_state.dispatch(&h.harness.runtime, 1, .start);
++    try h.drainWakes();
++    try std.testing.expectEqual(effects_mod.EffectExitReason.rejected, h.app_state.model.exit_reason.?);
++}
++
+ test "feedStderr on a lines-mode spawn reports EffectNotFound" {
+     var h = try Harness.create();
+     defer h.destroy();
+diff --git a/src/runtime/flow.zig b/src/runtime/flow.zig
+index 34fea77b7371ca7c4cd98acad989fba198d39e6f..ed99822e0af969d0ae8a612b1bd3e941f3a34abf 100644
+--- a/src/runtime/flow.zig
++++ b/src/runtime/flow.zig
+@@ -473,6 +473,19 @@ pub fn RuntimeFlow(comptime Runtime: type) type {
+                 .wake => {
+                     try dispatchEvent(self, app, .effects_wake);
+                 },
++                .files_dragged => |drag| {
++                    const widget_drag_event = self.routeCanvasWidgetFileDrag(drag, &self.widget_event_route_entries) catch |err| switch (err) {
++                        error.WindowNotFound,
++                        error.ViewNotFound,
++                        error.InvalidViewOptions,
++                        => null,
++                        else => return err,
++                    };
++                    if (widget_drag_event) |drag_event| {
++                        try dispatchEvent(self, app, .{ .canvas_widget_file_drag = drag_event });
++                    }
++                    self.invalidateFor(.command, null);
++                },
+                 .files_dropped => |drop| {
+                     const widget_drop_event = self.routeCanvasWidgetFileDrop(drop, &self.widget_event_route_entries) catch |err| switch (err) {
+                         error.WindowNotFound,
+@@ -544,6 +557,7 @@ pub fn RuntimeFlow(comptime Runtime: type) type {
+                 .canvas_widget_keyboard => {},
+                 .canvas_widget_scroll => {},
+                 .canvas_widget_file_drop => {},
++                .canvas_widget_file_drag => {},
+                 .canvas_widget_drag => {},
+                 .canvas_widget_context_menu => {
+                     self.invalidateFor(.command, null);
+diff --git a/src/runtime/root.zig b/src/runtime/root.zig
+index d6a79e93005c306c85ff696b5ea02e0c6873ec4d..cec86c63f8a51ecb6cbc2118134d3ab599b6b44d 100644
+--- a/src/runtime/root.zig
++++ b/src/runtime/root.zig
+@@ -31,6 +31,9 @@ pub const CanvasPresentationResult = core.CanvasPresentationResult;
+ pub const CanvasWidgetAccessibilityActionKind = core.CanvasWidgetAccessibilityActionKind;
+ pub const CanvasWidgetAccessibilityAction = core.CanvasWidgetAccessibilityAction;
+ pub const CanvasWidgetFileDropEvent = core.CanvasWidgetFileDropEvent;
++pub const CanvasWidgetFileDragEvent = core.CanvasWidgetFileDragEvent;
++pub const FileDragTargetEvent = core.FileDragTargetEvent;
++pub const FileDropTargetEvent = core.FileDropTargetEvent;
+ pub const CanvasWidgetDragEvent = core.CanvasWidgetDragEvent;
+ pub const CanvasWidgetDismissEvent = core.CanvasWidgetDismissEvent;
+ pub const CanvasWidgetContextPressEvent = core.CanvasWidgetContextPressEvent;
+@@ -69,6 +72,7 @@ pub const max_effect_line_bytes = runtime_effects.max_effect_line_bytes;
+ pub const max_effect_line_bytes_ceiling = runtime_effects.max_effect_line_bytes_ceiling;
+ pub const FetchResponseMode = runtime_effects.FetchResponseMode;
+ pub const max_effect_collect_bytes = runtime_effects.max_effect_collect_bytes;
++pub const max_effect_collect_bytes_ceiling = runtime_effects.max_effect_collect_bytes_ceiling;
+ pub const max_effect_stderr_tail_bytes = runtime_effects.max_effect_stderr_tail_bytes;
+ pub const max_effect_queue_entries = runtime_effects.max_effect_queue_entries;
+ pub const EffectResponse = runtime_effects.EffectResponse;
+diff --git a/src/runtime/session_journal.zig b/src/runtime/session_journal.zig
+index 074bc994860efbf117400c6581a22bb5f30626fa..8425538e2139d66657727e5711b4f779b86a89d6 100644
+--- a/src/runtime/session_journal.zig
++++ b/src/runtime/session_journal.zig
+@@ -193,6 +193,7 @@ fn formatLayoutDescription(comptime epoch: u32) []const u8 {
+             "timer=" ++ layout_fingerprint.describe(platform.TimerEvent) ++ "\n" ++
+             "audio=" ++ layout_fingerprint.describe(platform.AudioEvent) ++ "\n" ++
+             "video=" ++ layout_fingerprint.describe(platform.VideoEvent) ++ "\n" ++
++            "files_dragged=" ++ layout_fingerprint.describe(platform.FileDragEvent) ++ "\n" ++
+             "files_dropped=" ++ layout_fingerprint.describe(platform.FileDropEvent) ++ "\n" ++
+             // gpu_surface_frame journals a deliberate SUBSET of a
+             // telemetry-heavy struct (the rest is host render telemetry,
+@@ -472,6 +473,7 @@ const EventTag = enum(u8) {
+     view_focused = 26,
+     tray_command = 27,
+     notification_command = 28,
++    files_dragged = 29,
+ };
+ 
+ // The bit assignments below are hand-written wire layout: they are
+@@ -658,6 +660,17 @@ pub fn encodeEvent(event: platform.Event, buffer: []u8) JournalError![]const u8
+             try cursor.writeInt(u64, video.width);
+             try cursor.writeInt(u64, video.height);
+         },
++        .files_dragged => |drag| {
++            try cursor.writeEnum(EventTag.files_dragged);
++            try cursor.writeInt(u64, drag.window_id);
++            try cursor.writeStr(drag.view_label);
++            try cursor.writeEnum(drag.phase);
++            try cursor.writeBool(drag.point != null);
++            if (drag.point) |point| {
++                try cursor.writeF32(point.x);
++                try cursor.writeF32(point.y);
++            }
++        },
+         .files_dropped => |drop| {
+             try cursor.writeEnum(EventTag.files_dropped);
+             try cursor.writeInt(u64, drop.window_id);
+@@ -900,6 +913,21 @@ pub fn decodeEvent(bytes: []const u8, storage: *EventDecodeStorage) JournalError
+                 .height = try cursor.readInt(u64),
+             } };
+         },
++        .files_dragged => blk: {
++            const window_id = try cursor.readInt(u64);
++            const view_label = try cursor.readStr();
++            const phase = try cursor.readEnum(platform.FileDragPhase);
++            var point: ?geometry.PointF = null;
++            if (try cursor.readBool()) {
++                point = geometry.PointF.init(try cursor.readF32(), try cursor.readF32());
++            }
++            break :blk .{ .files_dragged = .{
++                .window_id = window_id,
++                .view_label = view_label,
++                .phase = phase,
++                .point = point,
++            } };
++        },
+         .files_dropped => blk: {
+             const window_id = try cursor.readInt(u64);
+             const view_label = try cursor.readStr();
+diff --git a/src/runtime/ui_app.zig b/src/runtime/ui_app.zig
+index 02589cbb01bbb0870738d495122454b73d2ab656..c16e991b5d1ff13e83764b2298431d3a6cb21ce4 100644
+--- a/src/runtime/ui_app.zig
++++ b/src/runtime/ui_app.zig
+@@ -724,6 +724,13 @@ pub fn UiAppWithFeatures(comptime ModelT: type, comptime MsgT: type, comptime fe
+             /// paths are borrowed for the callback; dispatch copies any
+             /// bytes the model retains through the ordinary update path.
+             on_drop: ?*const fn (drop: platform.FileDropEvent) ?MsgT = null,
++            /// Target-aware lifecycle for an external OS file drag. The
++            /// target id is null while the drag is outside marked widgets.
++            on_file_drag: ?*const fn (drag: core.FileDragTargetEvent) ?MsgT = null,
++            /// Final OS file drop routed to a marked canvas target.
++            on_file_drop: ?*const fn (drop: core.FileDropTargetEvent) ?MsgT = null,
++            /// Stable canvas widget ids that accept external file drags.
++            file_drop_targets: []const canvas.ObjectId = &.{},
+             /// Optional mapping from runtime timer events (started via
+             /// `runtime.startTimer`) into messages. Framework-reserved timer
+             /// ids (>= `platform.reserved_timer_id_base`) are handled
+@@ -2329,6 +2336,7 @@ pub fn UiAppWithFeatures(comptime ModelT: type, comptime MsgT: type, comptime fe
+                 std.debug.assert(if (self.context_menu_pin) |pin| pin.window_id != null or pin.arena_index != next_index else true);
+                 _ = self.arenas[next_index].reset(.retain_capacity);
+                 var ui = Ui.init(self.arenas[next_index].allocator());
++                ui.file_drop_targets = self.options.file_drop_targets;
+                 // The house video chrome renders the channel's honest
+                 // snapshot, stamped before the view fn runs — the model
+                 // carries none of it.
+@@ -3170,6 +3178,7 @@ pub fn UiAppWithFeatures(comptime ModelT: type, comptime MsgT: type, comptime fe
+             std.debug.assert(if (self.context_menu_pin) |pin| pin.window_id != slot.window_id or pin.arena_index != next_index else true);
+             _ = slot.arenas[next_index].reset(.retain_capacity);
+             var ui = Ui.init(slot.arenas[next_index].allocator());
++            ui.file_drop_targets = self.options.file_drop_targets;
+             // Window views render the same honest video chrome state,
+             // and their `<video src>` declarations reconcile the channel
+             // too — `Ui.video` promises that declaring the element IS
+@@ -4297,6 +4306,7 @@ pub fn UiAppWithFeatures(comptime ModelT: type, comptime MsgT: type, comptime fe
+                 .canvas_widget_pointer,
+                 .canvas_widget_drag,
+                 .canvas_widget_file_drop,
++                .canvas_widget_file_drag,
+                 .canvas_widget_context_press,
+                 .canvas_widget_context_menu_request,
+                 .canvas_widget_context_menu_shown,
+@@ -4382,6 +4392,27 @@ pub fn UiAppWithFeatures(comptime ModelT: type, comptime MsgT: type, comptime fe
+                     const map = self.options.on_drop orelse return;
+                     if (map(drop)) |msg| try self.dispatch(runtime, drop.window_id, msg);
+                 },
++                .canvas_widget_file_drag => |drag| {
++                    const map = self.options.on_file_drag orelse return;
++                    if (map(.{
++                        .window_id = drag.window_id,
++                        .view_label = drag.view_label,
++                        .point = drag.drag.point,
++                        .phase = @enumFromInt(@intFromEnum(drag.drag.phase)),
++                        .target_id = if (drag.target) |target| target.id else null,
++                    })) |msg| try self.dispatch(runtime, drag.window_id, msg);
++                },
++                .canvas_widget_file_drop => |drop| {
++                    const map = self.options.on_file_drop orelse return;
++                    const target = drop.target orelse return;
++                    if (map(.{
++                        .window_id = drop.window_id,
++                        .view_label = drop.view_label,
++                        .point = drop.drop.point,
++                        .paths = drop.drop.paths,
++                        .target_id = target.id,
++                    })) |msg| try self.dispatch(runtime, drop.window_id, msg);
++                },
+                 .gpu_surface_frame => |frame_event| try self.handleFrame(runtime, frame_event),
+                 .gpu_surface_resized => |resize_event| try self.handleResize(runtime, resize_event),
+                 .canvas_widget_pointer => |pointer_event| try self.handlePointer(runtime, pointer_event),

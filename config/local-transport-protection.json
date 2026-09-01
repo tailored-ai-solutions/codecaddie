@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie security owner",
+  "reviewCadence": "Every release and after any transport change",
+  "remoteApplicationServer": false,
+  "inTransitRule": {
+    "encryptionRequiredWhenSensitiveDataCrossesTrustBoundary": true,
+    "sensitiveData": ["repository source", "attachment contents", "credentials", "disallowed personal data"],
+    "localExceptionRule": "An unencrypted same-user channel is allowed only when closed payload contracts and adversarial tests prove no sensitive data crosses it and no network or different-identity boundary exists."
+  },
+  "boundaries": [
+    {
+      "id": "desktop-core-stdio",
+      "transport": "same-user child-process anonymous pipes",
+      "encryptionRequired": false,
+      "sensitiveDataInTransit": false,
+      "sensitiveDataExclusionProof": ["privacy_adversarial_attachment_never_enters_ipc_events_or_recovery_exports", "privacy_adversarial_report_redacts_repository_payload_and_hostile_direction"],
+      "localOnlyException": "No network hop exists; the desktop starts the signed local core, closes inherited handles, and sends bounded framed metadata without repository source.",
+      "controls": ["local executable identity", "bounded length-prefixed frame", "closed child stdio", "correlation ID"]
+    },
+    {
+      "id": "desktop-core-staged-request",
+      "transport": "same-user operating-system temporary file",
+      "encryptionRequired": false,
+      "sensitiveDataInTransit": false,
+      "sensitiveDataExclusionProof": ["privacy_adversarial_prompt_keeps_untrusted_planning_data_below_a_fixed_boundary", "privacy_adversarial_attachment_never_enters_ipc_events_or_recovery_exports"],
+      "localOnlyException": "The transient file is required only above the spawn-stdin budget, is confined to the OS temporary root, owner-only, regular-file only, and deleted after every read outcome.",
+      "controls": ["0600 mode on Unix", "single frame", "bounded bytes", "delete on success and failure"]
+    },
+    {
+      "id": "core-provider-stdio",
+      "transport": "same-user installed provider subprocess pipes",
+      "encryptionRequired": false,
+      "sensitiveDataInTransit": false,
+      "sensitiveDataExclusionProof": ["privacy_adversarial_progress_diagnostics_and_logs_never_echo_untrusted_payloads", "privacy_adversarial_snapshot_cleanup_after_success_failure_and_map_generation"],
+      "localOnlyException": "CodeCaddie opens no application network transport; the installed provider receives bounded planning metadata and reads a disposable exact-commit snapshot through confined local tools under its own authorization and privacy terms.",
+      "controls": ["no shell", "closed process tree", "bounded output", "timeout", "cancellation", "read-only snapshot"]
+    }
+  ],
+  "atRest": {
+    "encrypted": true,
+    "keyStorage": "owner-only local data-root key",
+    "credentialManager": false
+  },
+  "forbiddenPayloads": ["repository source in IPC", "source in prompts", "free-form errors in telemetry", "credentials in reports"]
+}

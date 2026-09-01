@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "description": "Three synthetic approved goals for the executable journeys (installed core, supported prior binaries, and the agent verification skill). They describe CodeCaddie's own release discipline and are not derived from any customer's goal set.",
+  "goals": [
+    {
+      "goalId": "synthetic-first-report",
+      "title": "Product owners make lower-risk release decisions",
+      "businessOutcome": "An accountable product executive applies the supported-check score as a decision rule on every review, protecting customer trust and reducing operating cost from avoidable rework.",
+      "criteria": [
+        "An executable cross-platform test records an exact-commit analysis, reopens the saved report after process restart, and exports a metadata-only Word document.",
+        "Versioned local instrumentation records time to first report and repeat analysis without repository source text."
+      ],
+      "priority": 5,
+      "position": 1,
+      "rubricDimensions": ["Business & product"]
+    },
+    {
+      "goalId": "synthetic-governed-change",
+      "title": "Change remains secure and governable",
+      "businessOutcome": "The product owner can ship local changes without avoidable security, licensing, or recovery risk.",
+      "criteria": [
+        "Automated tests, coverage thresholds, static analysis, and cross-platform build checks run as enforced CI release gates.",
+        "Least-privilege access controls and encryption protect sensitive data, while tamper-evident audit logs record security-relevant actions.",
+        "Dependency vulnerabilities are scanned in CI, automated dependency updates follow a documented cadence, and dependency licenses are inventoried for distribution.",
+        "A documented developer bootstrap is verified from a clean machine.",
+        "Data migrations have a safe recovery path and retryable writes are idempotent through interruption."
+      ],
+      "priority": 4,
+      "position": 2,
+      "rubricDimensions": ["Architecture & platform"]
+    },
+    {
+      "goalId": "synthetic-reliable-operations",
+      "title": "Local operations stay recoverable",
+      "businessOutcome": "The product owner can detect, recover from, and learn from failures without losing the saved decision history.",
+      "criteria": [
+        "Structured logs, metrics, traces, and error tracking carry correlation IDs, with actionable alerting for SLO and customer-impacting failures.",
+        "Encrypted backups run on a defined schedule with tested restore against documented recovery-time and recovery-point targets.",
+        "Staged releases use explicit go or no-go gates, a tested rollback path, owned incident recovery, and a post-incident learning loop.",
+        "Provider, persistence, storage, and cancellation failures have executable local recovery tests."
+      ],
+      "priority": 4,
+      "position": 3,
+      "rubricDimensions": ["Operations & reliability"]
+    }
+  ]
+}

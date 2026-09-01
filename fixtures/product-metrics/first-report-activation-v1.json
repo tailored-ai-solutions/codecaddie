@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "observations": [
+    { "workspaceId": "macos-1", "productVersion": "0.3.0", "platform": "macos-aarch64", "cohort": "desktop-0.3.0", "elapsedMilliseconds": 120000 },
+    { "workspaceId": "macos-2", "productVersion": "0.3.0", "platform": "macos-x86_64", "cohort": "desktop-0.3.0", "elapsedMilliseconds": 600000 },
+    { "workspaceId": "macos-3", "productVersion": "0.3.0", "platform": "macos-aarch64", "cohort": "desktop-0.3.0", "elapsedMilliseconds": 600001 },
+    { "workspaceId": "macos-4", "productVersion": "0.3.0", "platform": "macos-aarch64", "cohort": "desktop-0.3.0", "elapsedMilliseconds": null },
+    { "workspaceId": "windows-1", "productVersion": "0.3.0", "platform": "windows-x86_64", "cohort": "desktop-0.3.0", "elapsedMilliseconds": 300000 },
+    { "workspaceId": "windows-2", "productVersion": "0.3.0", "platform": "windows-x86_64", "cohort": "desktop-0.3.0", "elapsedMilliseconds": 450000 },
+    { "workspaceId": "windows-3", "productVersion": "0.3.0", "platform": "windows-aarch64", "cohort": "desktop-0.3.0", "elapsedMilliseconds": 500000 },
+    { "workspaceId": "windows-4", "productVersion": "0.3.0", "platform": "windows-x86_64", "cohort": "desktop-0.3.0", "elapsedMilliseconds": 600000 },
+    { "workspaceId": "windows-5", "productVersion": "0.3.0", "platform": "windows-x86_64", "cohort": "desktop-0.3.0", "elapsedMilliseconds": null }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "codecaddie": {
+      "command": "codecaddie",
+      "args": ["mcp"]
+    }
+  }
+}

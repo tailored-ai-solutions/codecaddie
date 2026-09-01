@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codecaddie.ai/protocol/portable-backup-v1.schema.json",
+  "title": "CodeCaddie portable backup envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "algorithm",
+    "kdf",
+    "memoryKib",
+    "iterations",
+    "parallelism",
+    "salt",
+    "nonce",
+    "ciphertext"
+  ],
+  "properties": {
+    "format": { "const": "codecaddie-portable-backup-v1" },
+    "algorithm": { "const": "XChaCha20-Poly1305" },
+    "kdf": { "const": "Argon2id" },
+    "memoryKib": { "const": 65536 },
+    "iterations": { "const": 3 },
+    "parallelism": { "const": 1 },
+    "salt": { "type": "string", "minLength": 22, "maxLength": 22, "pattern": "^[A-Za-z0-9+/]+$" },
+    "nonce": { "type": "string", "minLength": 32, "maxLength": 32, "pattern": "^[A-Za-z0-9+/]+$" },
+    "ciphertext": { "type": "string", "minLength": 1, "maxLength": 89478486, "pattern": "^[A-Za-z0-9+/]+$" }
+  }
+}

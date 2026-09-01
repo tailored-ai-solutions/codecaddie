@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie maintainers",
+  "reviewCadence": "Per release and monthly local reliability review",
+  "localOnly": true,
+  "operations": [
+    {
+      "operation": "scan.run",
+      "availabilityPercent": 99.0,
+      "latencyMilliseconds": 900000,
+      "alertAfterConsecutiveFailures": 1
+    },
+    {
+      "operation": "goals.generate",
+      "availabilityPercent": 99.0,
+      "latencyMilliseconds": 600000,
+      "alertAfterConsecutiveFailures": 1
+    },
+    {
+      "operation": "map.generate",
+      "availabilityPercent": 99.0,
+      "latencyMilliseconds": 600000,
+      "alertAfterConsecutiveFailures": 1
+    },
+    {
+      "operation": "workspace.recent",
+      "availabilityPercent": 99.9,
+      "latencyMilliseconds": 5000,
+      "alertAfterConsecutiveFailures": 1
+    },
+    {
+      "operation": "workspace.recovery.export",
+      "availabilityPercent": 99.9,
+      "latencyMilliseconds": 30000,
+      "alertAfterConsecutiveFailures": 1
+    },
+    {
+      "operation": "workspace.backup.export",
+      "availabilityPercent": 99.9,
+      "latencyMilliseconds": 30000,
+      "alertAfterConsecutiveFailures": 1
+    },
+    {
+      "operation": "workspace.backup.import",
+      "availabilityPercent": 99.9,
+      "latencyMilliseconds": 60000,
+      "alertAfterConsecutiveFailures": 1
+    },
+    {
+      "operation": "workspace.backup.schedule.run",
+      "availabilityPercent": 99.9,
+      "latencyMilliseconds": 30000,
+      "alertAfterConsecutiveFailures": 1
+    },
+    {
+      "operation": "reports.export_word",
+      "availabilityPercent": 99.5,
+      "latencyMilliseconds": 30000,
+      "alertAfterConsecutiveFailures": 1
+    }
+  ],
+  "customerJourneys": [
+    {
+      "journey": "first_report_creation",
+      "availabilityPercent": 99.0,
+      "latencyMilliseconds": 600000,
+      "owner": "CodeCaddie maintainers",
+      "alertCode": "first_report_slo_breached",
+      "measuredBy": ["workspace_created", "analysis_started", "report_saved"]
+    },
+    {
+      "journey": "report_persistence",
+      "availabilityPercent": 99.9,
+      "latencyMilliseconds": 5000,
+      "owner": "CodeCaddie maintainers",
+      "alertCode": "report_persistence_slo_breached",
+      "measuredBy": ["analysis_completed", "report_saved"]
+    },
+    {
+      "journey": "provider_execution",
+      "availabilityPercent": 99.0,
+      "latencyMilliseconds": 480000,
+      "owner": "CodeCaddie maintainers",
+      "alertCode": "provider_execution_slo_breached",
+      "measuredBy": ["scan.run", "goals.generate", "map.generate"]
+    },
+    {
+      "journey": "crash_free_desktop_sessions",
+      "availabilityPercent": 99.5,
+      "latencyMilliseconds": 5000,
+      "owner": "CodeCaddie maintainers",
+      "alertCode": "desktop_crash_detected",
+      "measuredBy": ["desktop_session_started", "desktop_session_ended", "native_panic_detected"]
+    }
+  ],
+  "desktopSession": {
+    "crashFreePercent": 99.5,
+    "alertOnDetectedCrash": true
+  }
+}

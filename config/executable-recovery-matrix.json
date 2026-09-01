@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie reliability owner",
+  "localOnly": true,
+  "snapshotLifecycle": {
+    "requiredOutcomes": [
+      "success",
+      "provider failure",
+      "timeout",
+      "cancellation",
+      "map generation",
+      "application restart",
+      "retry after released lease"
+    ],
+    "tests": [
+      "repository::tests::snapshot_lifecycle_assurance::snapshot_lifecycle_matrix_proves_every_declared_cleanup_path"
+    ]
+  },
+  "disasterRecovery": [
+    {
+      "case": "interrupted_or_partial_import",
+      "recoverable": true,
+      "tests": [
+        "local_state::workspace_store::tests::privacy_adversarial_portable_backup_authenticates_and_restores_transactionally"
+      ]
+    },
+    {
+      "case": "interrupted_data_migration",
+      "recoverable": true,
+      "tests": [
+        "persistence::tests::interrupted_plaintext_encryption_migration_retries_without_data_loss",
+        "storage::tests::interrupted_plaintext_event_migration_retries_without_duplicates",
+        "local_state::identity::tests::interrupted_local_state_migrations_converge_before_and_after_rename",
+        "persistence::tests::local_state_recovers_interrupted_quarantine_and_stale_sidecars"
+      ]
+    },
+    {
+      "case": "insufficient_disk_capacity",
+      "recoverable": true,
+      "tests": [
+        "persistence::tests::storage_capacity_failures_preserve_the_committed_value_for_retry"
+      ]
+    },
+    {
+      "case": "lost_local_content_key",
+      "recoverable": true,
+      "tests": [
+        "local_state::workspace_store::tests::privacy_adversarial_portable_backup_authenticates_and_restores_transactionally"
+      ]
+    },
+    {
+      "case": "corrupt_or_incompatible_manifest",
+      "recoverable": true,
+      "tests": [
+        "local_state::workspace_store::tests::privacy_adversarial_portable_backup_authenticates_and_restores_transactionally"
+      ]
+    }
+  ]
+}

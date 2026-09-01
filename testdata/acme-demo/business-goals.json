@@ -1,0 +1,86 @@
+[
+  {
+    "id": "first-search-result-is-fast",
+    "priority": 5,
+    "title": "Customers reach a first useful search result quickly",
+    "acceptanceCriteria": [
+      "A documented onboarding path registers one content source through the sources API and returns a ranked result from the search API, and an automated end-to-end test exercises that path.",
+      "The service records the time from source connection to first search result per customer, and the repository documents the target and the owner who reviews misses."
+    ]
+  },
+  {
+    "id": "search-improves-measurable-outcomes",
+    "priority": 5,
+    "title": "Search improves measurable customer outcomes",
+    "acceptanceCriteria": [
+      "Versioned outcome definitions measure search success rate, zero-result queries, document freshness, and time saved by customer cohort.",
+      "Ranking confidence and incomplete source coverage remain visible beside every result-quality metric in customer and executive reports."
+    ]
+  },
+  {
+    "id": "ranking-remains-explainable",
+    "priority": 4,
+    "title": "Search ranking remains explainable",
+    "acceptanceCriteria": [
+      "Each ranked result traces to the versioned index build, the ranking model version, the source document, and the features that produced its score.",
+      "Relevance feedback, manual overrides, and their reasons are recorded and feed an auditable ranking improvement loop."
+    ]
+  },
+  {
+    "id": "content-sources-connect-through-stable-contracts",
+    "priority": 5,
+    "title": "Content sources connect through stable contracts",
+    "acceptanceCriteria": [
+      "Versioned APIs and connector contracts cover source registration, document ingestion, search, and result export, and contract tests block breaking changes.",
+      "Signed webhooks use bounded retries, replay protection, dead-letter recovery, and delivery reconciliation."
+    ]
+  },
+  {
+    "id": "customer-data-stays-isolated",
+    "priority": 5,
+    "title": "Every customer's documents and workload stay isolated",
+    "acceptanceCriteria": [
+      "Tenant scope is enforced across document storage, search indexes, caches, queues, exports, and support access.",
+      "Automated negative tests reject cross-tenant reads, changes, enumeration, and noisy-neighbor failures."
+    ]
+  },
+  {
+    "id": "changes-ship-with-confidence",
+    "priority": 5,
+    "title": "Changes ship with repeatable confidence",
+    "acceptanceCriteria": [
+      "Automated unit, integration, contract, migration, and end-to-end tests run in CI gates and block incompatible releases.",
+      "Dependency vulnerability, update, and license policies produce reviewable release evidence."
+    ]
+  },
+  {
+    "id": "service-health-is-actionable",
+    "priority": 5,
+    "title": "Service health is observable and actionable",
+    "acceptanceCriteria": [
+      "Structured logs, metrics, traces, synthetic checks, SLOs, and alerts cover the ingestion, search, and webhook delivery paths.",
+      "Tested backup and restore, rollback, and incident procedures meet committed recovery targets."
+    ]
+  },
+  {
+    "id": "capacity-stays-predictable",
+    "priority": 4,
+    "title": "Growth preserves predictable performance and cost",
+    "acceptanceCriteria": [
+      "Load tests enforce latency, throughput, and cost targets across representative document-corpus sizes and ingestion bursts.",
+      "A clean-machine developer bootstrap and documented architecture let engineers reproduce and diagnose the system."
+    ]
+  },
+  {
+    "id": "ai-assisted-engineering-stays-verified",
+    "priority": 4,
+    "title": "AI-assisted engineering stays verified, bounded, and traceable",
+    "acceptanceCriteria": [
+      "A version-controlled agent contract (for example AGENTS.md or CLAUDE.md) states the repository's invariants, the verification recipe, and the checks an agent must run before proposing a change.",
+      "A repository-local verification harness launches the service, checks its health, drives at least one user-facing feature, captures evidence, and cleans up, so a change is proven to work at runtime rather than only compiling.",
+      "Agent-authored and human-authored changes pass the same enforced CI gates plus that runtime verification step before merge, and agent commits are attributed and signed off.",
+      "Design decisions are recorded in version control (for example a decision log) and a module map documents where behavior lives, so agents and reviewers can trace why and where without archaeology.",
+      "Agent tool access is least-privilege in code: read-only by default, with write, network, and execution scopes explicit and auditable."
+    ]
+  }
+]

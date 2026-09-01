@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie release commander",
+  "features": {
+    "providerExecution": "enabled",
+    "portableBackupImport": "enabled",
+    "reportExport": "enabled",
+    "recommendationPromptCopy": "enabled"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie maintainers",
+  "localOnly": true,
+  "externalTransmission": false,
+  "clientCrashMeasurement": {
+    "signal": "Native SDK panic marker",
+    "event": "desktop_crash_detected",
+    "aggregate": "desktopCrashesDetected",
+    "recordSchema": "protocol/local-reliability-event-v1.schema.json",
+    "markerBodyRead": false,
+    "markerPathRecorded": false,
+    "restartBehavior": "Atomically claim and delete the marker before recording a signed local event."
+  },
+  "providerBridgeMeasurement": {
+    "boundary": "Repository-owned framed core request finalization",
+    "operations": ["scan.run", "goals.generate", "map.generate", "provider.*"],
+    "event": "operation_completed",
+    "failureCategory": "provider",
+    "aggregates": [
+      "providerOperationSamples",
+      "providerOperationFailures",
+      "providerAlertsRaised"
+    ]
+  },
+  "localTraceMeasurement": {
+    "boundary": "Every completed repository-owned local operation",
+    "event": "operation_completed",
+    "legacyEvent": "trace_span_completed",
+    "representation": "The signed operation record is also the local trace span, preserving prior-binary wire compatibility without a duplicate event.",
+    "traceIdentity": "correlationId",
+    "spanName": "operation",
+    "aggregate": "traceSpansRecorded",
+    "attributes": ["outcome", "elapsed milliseconds", "error category", "retryability"]
+  },
+  "privacy": {
+    "surfaces": [
+      "logs",
+      "traces",
+      "metrics",
+      "alerts",
+      "crash reports"
+    ],
+    "schema": "protocol/local-reliability-event-v1.schema.json",
+    "defaultFieldAdmission": "deny",
+    "allowlistedData": [
+      "operation code",
+      "error category",
+      "error code",
+      "correlation ID",
+      "outcome",
+      "retryability",
+      "elapsed milliseconds",
+      "product version",
+      "platform"
+    ],
+    "forbiddenData": [
+      "repository source",
+      "attachment contents",
+      "provider output",
+      "prompts",
+      "goal text",
+      "free-form errors",
+      "credentials",
+      "disallowed personal data"
+    ]
+  }
+}

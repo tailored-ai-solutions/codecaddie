@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie product owner",
+  "reviewCadence": "Monthly and after an evidence-integrity incident",
+  "saveDecision": {
+    "required": [
+      "exactly one assessment for every approved goal version",
+      "exactly one assessment for every approved success check",
+      "immutable commit and blob coordinates for every supported or partial claim",
+      "explicit unsupported or unverified status when evidence is absent or cannot be verified",
+      "unique ranked recommendations bound to approved goals and immutable evidence"
+    ],
+    "block": [
+      "missing goal or success-check assessments",
+      "supported or partial claims without bindable immutable evidence",
+      "source text or source-derived narrative that fails redaction",
+      "duplicate recommendation identifiers or ranks",
+      "coordinates that do not resolve in the analyzed commit"
+    ]
+  },
+  "exportDecision": {
+    "requiresPersistedValidatedReport": true,
+    "allowUnverifiedWhenExplicitlyLabeled": true,
+    "sourceTextAllowed": false
+  },
+  "executableAssurance": {
+    "actionReferenceRejectionMatrix": "report_integrity::tests::prioritized_action_reference_rejection_matrix_is_complete",
+    "nonOverwritingComparisonJourney": "decision_journey_assurance::repeat_analysis_retains_both_commits_and_emits_review_and_comparison_lifecycle_events",
+    "workingTreeSwitchUiProjection": "decision_journey_assurance::switching_the_working_tree_cannot_change_saved_or_displayed_evidence"
+  }
+}

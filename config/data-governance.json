@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie privacy owner",
+  "reviewCadence": "Per release and quarterly",
+  "scope": "device-local CodeCaddie workspace metadata",
+  "consent": {
+    "basis": "A user explicitly creates a local workspace and invokes each measured product action.",
+    "externalTransmission": "forbidden",
+    "freeTextCollection": "forbidden",
+    "revoke": "Delete the workspace data or the CodeCaddie data root; no remote copy exists."
+  },
+  "retention": {
+    "lifetime": "workspace lifetime",
+    "deletionBoundary": "workspace data root",
+    "aggregateExportOnly": true
+  },
+  "deletion": {
+    "userAction": "Delete the workspace data or the complete local data root.",
+    "scope": "workspace events, reports, maps, measurements, diagnostics, backups, and owner-only local content key material",
+    "remoteDeletionRequired": false,
+    "verification": "The selected local scope no longer exists and no remote application copy exists."
+  },
+  "minimization": {
+    "allowlistedSchemas": [
+      "protocol/local-product-events-v2.schema.json",
+      "protocol/local-reliability-event-v1.schema.json",
+      "protocol/persisted-report-evidence-v1.schema.json",
+      "protocol/updater-result-v1.schema.json"
+    ],
+    "forbidden": [
+      "repository source",
+      "attachment contents",
+      "goal text",
+      "prompts",
+      "free-form error messages",
+      "credentials",
+      "personal identifiers"
+    ],
+    "disallowedPersonalDataTaxonomy": [
+      "names and aliases",
+      "email addresses and phone numbers",
+      "postal addresses and precise location",
+      "government and financial account identifiers",
+      "authentication secrets",
+      "biometric health and demographic attributes",
+      "free-form user or provider content"
+    ]
+  },
+  "serializationChangeGate": {
+    "additionalPropertiesMustRemainFalse": true,
+    "admissionContract": "config/serialized-field-admission-v1.json",
+    "requiredTest": "node --test scripts/tests/decision-governance.test.mjs",
+    "requiredPrivacyGate": "cargo test --workspace --locked privacy_adversarial -- --nocapture"
+  },
+  "exceptionPolicy": {
+    "register": "config/data-governance-exceptions.json",
+    "approval": "CodeCaddie privacy owner before merge",
+    "requiredFields": ["id", "scope", "rationale", "owner", "approvedAt", "expiresAt", "mitigations"],
+    "expiredExceptionsBlockRelease": true
+  },
+  "exceptions": []
+}

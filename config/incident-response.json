@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie reliability owner",
+  "reviewCadence": "Per release and after every incident",
+  "severityLevels": [
+    {
+      "id": "SEV-1",
+      "definition": "Local data loss, source disclosure, signing compromise, or a broadly unusable release",
+      "acknowledgeMinutes": 15
+    },
+    {
+      "id": "SEV-2",
+      "definition": "Material analysis, update, recovery, or privacy failure with a safe workaround",
+      "acknowledgeMinutes": 30
+    },
+    {
+      "id": "SEV-3",
+      "definition": "Degraded product behavior affecting a bounded workflow or platform",
+      "acknowledgeMinutes": 240
+    },
+    {
+      "id": "SEV-4",
+      "definition": "Low-impact defect or near miss requiring tracked correction",
+      "acknowledgeMinutes": 1440
+    }
+  ],
+  "roles": [
+    "incident_commander",
+    "technical_lead",
+    "communications_owner",
+    "scribe"
+  ],
+  "diagnosticAllowlist": [
+    "correlation_id",
+    "operation",
+    "failure_category",
+    "elapsed_milliseconds",
+    "platform",
+    "product_version",
+    "build_number",
+    "immutable_commit"
+  ],
+  "diagnosticForbidden": [
+    "repository_source",
+    "repository_path",
+    "attachment_content",
+    "goal_text",
+    "prompt",
+    "secret",
+    "personal_data"
+  ],
+  "releaseWorkflow": ".github/workflows/release.yml",
+  "stableReconciliationWorkflow": ".github/workflows/reconcile-stable-release.yml",
+  "runbook": "docs/INCIDENT-RESPONSE.md",
+  "correctiveActionIndex": "docs/incidents/README.md",
+  "correctiveActionTemplate": "docs/incidents/TEMPLATE.md"
+}

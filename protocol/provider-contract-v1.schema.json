@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codecaddie.ai/protocol/provider-contract-v1.schema.json",
+  "title": "CodeCaddie provider execution contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "provider",
+    "request",
+    "response",
+    "evidence",
+    "lifecycle",
+    "fallback"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "provider": { "enum": ["codex", "claude", "grok"] },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operationId", "snapshotCommit", "timeoutSeconds"],
+      "properties": {
+        "operationId": { "type": "string", "minLength": 1 },
+        "snapshotCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 900 }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "providerVersion"],
+      "properties": {
+        "status": { "enum": ["completed", "failed", "cancelled", "timed_out"] },
+        "providerVersion": { "type": "string", "minLength": 1 },
+        "errorCode": { "type": "string" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repositoryId", "commitSha", "path", "startLine", "endLine"],
+      "properties": {
+        "repositoryId": { "type": "string", "minLength": 1 },
+        "commitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "path": { "type": "string", "minLength": 1 },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundedOutput", "timeout", "cancellation", "typedErrors"],
+      "properties": {
+        "boundedOutput": { "const": true },
+        "timeout": { "const": true },
+        "cancellation": { "const": true },
+        "typedErrors": { "const": true }
+      }
+    },
+    "fallback": { "const": "forbidden" }
+  }
+}

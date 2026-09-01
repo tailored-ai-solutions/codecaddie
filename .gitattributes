@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.ps1 text eol=crlf
+crates/codecaddie-core/rubrics/*.md text eol=lf
+crates/codecaddie-core/src/testdata/* -text
+docs/licenses/*.txt -text
+patches/*.patch -text -whitespace
+Cargo.lock linguist-generated
+pnpm-lock.yaml linguist-generated
+docs/licenses/RUST-DEPENDENCY-LICENSES.md linguist-generated

@@ -1,0 +1,36 @@
+{
+  "name": "codecaddie",
+  "owner": {
+    "name": "CodeCaddie"
+  },
+  "description": "CodeCaddie's marketplace: the codecaddie analysis plugin and pinned pstack engineering skills for Claude Code.",
+  "plugins": [
+    {
+      "name": "codecaddie",
+      "source": "./plugin",
+      "description": "Evaluate whether a codebase delivers its approved business goals, with immutable evidence citations."
+    },
+    {
+      "name": "pstack",
+      "description": "pstack rigorous-engineering skills, Claude Code port. Mutually exclusive with pstack-upstream: uninstall one before installing the other. Pin and bump procedure: docs/decisions/0009-pstack-adoption-and-pin-procedure.md.",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/michael-denyer/pstack-claude.git",
+        "path": "plugins/pstack",
+        "ref": "main",
+        "sha": "1716d5d6e0a8f50f137626d6f480d0f8533959c9"
+      }
+    },
+    {
+      "name": "pstack-upstream",
+      "description": "pstack skills straight from the canonical cursor/plugins source (no Claude manifest; skills/ and agents/ are discovered by default). Opt-in and mutually exclusive with pstack.",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cursor/plugins.git",
+        "path": "pstack",
+        "ref": "main",
+        "sha": "23a56e2dac2efd54788056db8eced26e371d7b5e"
+      }
+    }
+  ]
+}

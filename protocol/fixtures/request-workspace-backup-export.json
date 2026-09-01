@@ -1,0 +1,1 @@
+{"id":"req-backup-export-0001","protocolVersion":2,"workspaceId":"workspace-0001","method":"workspace.backup.export","params":{"destination":"/Users/example/Backups/project.codecaddie-backup","passphrase":"example local backup passphrase"}}

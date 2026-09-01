@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie maintainers",
+  "privacyGate": "cargo test --workspace --locked privacy_adversarial -- --nocapture",
+  "fixtures": [
+    "crates/codecaddie-core/tests/fixtures/adversarial/repository_payload.rs",
+    "crates/codecaddie-core/tests/fixtures/adversarial/attachment_payload.md"
+  ],
+  "requiredSurfaces": [
+    "local-state-at-rest",
+    "reports",
+    "desktop-ipc",
+    "progress-diagnostics-and-logs",
+    "word-export",
+    "recovery-export",
+    "portable-backup",
+    "coding-prompt",
+    "product-analytics",
+    "native-crash-marker",
+    "provider-runtime-errors",
+    "local-trace-spans",
+    "runtime-telemetry-cross-surface",
+    "provider-snapshot-retention",
+    "updater-result-mailbox-and-startup-ipc"
+  ],
+  "surfaces": [
+    {
+      "id": "local-state-at-rest",
+      "sourceFiles": [
+        "crates/codecaddie-core/src/at_rest.rs",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs"
+      ],
+      "rustTests": [
+        "privacy_adversarial_authenticated_envelope_hides_source_canary_and_binds_purpose",
+        "privacy_adversarial_local_key_is_owner_only_and_reused_without_credentials",
+        "privacy_adversarial_startup_migrates_every_active_private_surface"
+      ],
+      "assertion": "Authenticated ciphertext contains neither repository nor attachment source sentinels, the local key is owner-only without credential-manager calls, associated data prevents cross-purpose replay, and startup migration covers unopened active state."
+    },
+    {
+      "id": "reports",
+      "sourceFile": "crates/codecaddie-core/src/analyzer/report_materialize.rs",
+      "rustTests": [
+        "privacy_adversarial_report_redacts_repository_payload_and_hostile_direction"
+      ],
+      "assertion": "Report materialization removes source canaries and treats injected repository directions as untrusted."
+    },
+    {
+      "id": "desktop-ipc",
+      "sourceFile": "crates/codecaddie-core/src/local_state/workspace_store.rs",
+      "rustTests": [
+        "privacy_adversarial_attachment_never_enters_ipc_events_or_recovery_exports"
+      ],
+      "assertion": "Framed desktop responses contain metadata only and never attachment contents or host attachment paths."
+    },
+    {
+      "id": "progress-diagnostics-and-logs",
+      "sourceFile": "crates/codecaddie-core/src/provider/stream.rs",
+      "rustTests": [
+        "privacy_adversarial_progress_diagnostics_and_logs_never_echo_untrusted_payloads"
+      ],
+      "assertion": "Provider progress, diagnostics, and log-safe failure text cannot echo source or hostile instructions."
+    },
+    {
+      "id": "word-export",
+      "sourceFile": "crates/codecaddie-core/src/export.rs",
+      "rustTests": [
+        "privacy_adversarial_word_reports_are_metadata_only_docx_packages"
+      ],
+      "assertion": "Every DOCX package part is scanned for source and attachment canaries."
+    },
+    {
+      "id": "recovery-export",
+      "sourceFile": "crates/codecaddie-core/src/local_state/workspace_store.rs",
+      "rustTests": [
+        "privacy_adversarial_attachment_never_enters_ipc_events_or_recovery_exports"
+      ],
+      "assertion": "Explicit local recovery exports preserve signed metadata without attachment contents or source canaries."
+    },
+    {
+      "id": "portable-backup",
+      "sourceFiles": [
+        "crates/codecaddie-core/src/local_state/portable_backup.rs",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs"
+      ],
+      "rustTests": [
+        "privacy_adversarial_portable_backup_authenticates_and_restores_transactionally"
+      ],
+      "assertion": "Portable backups use Argon2id and authenticated encryption, expose no source, attachment, path, goal, or passphrase plaintext, reject wrong secrets and tampering, validate signed history before import, and converge without duplicate events after an interrupted restore."
+    },
+    {
+      "id": "coding-prompt",
+      "sourceFile": "crates/codecaddie-core/src/service/recommendations.rs",
+      "rustTests": [
+        "privacy_adversarial_prompt_keeps_untrusted_planning_data_below_a_fixed_boundary"
+      ],
+      "assertion": "Generated coding prompts retain bounded metadata and reject repository source and injected planning text."
+    },
+    {
+      "id": "product-analytics",
+      "sourceFile": "crates/codecaddie-core/src/local_state/workspace_store.rs",
+      "rustTests": [
+        "privacy_adversarial_product_event_contract_is_content_free_and_local",
+        "privacy_adversarial_runtime_lifecycle_emits_stable_workspace_and_session_identity"
+      ],
+      "assertion": "Local product events use an allowlisted, content-free schema with no source, path, goal, prompt, or free-text fields; the real workspace, goal, analysis, and report paths emit schema-2 records with matching stable workspace and session identities."
+    },
+    {
+      "id": "native-crash-marker",
+      "sourceFile": "crates/codecaddie-core/src/local_state/workspace_store.rs",
+      "rustTests": [
+        "privacy_adversarial_crash_markers_become_content_free_reliability_events"
+      ],
+      "assertion": "Native panic marker contents are consumed and deleted while only a content-free crash fact reaches local reliability events."
+    },
+    {
+      "id": "provider-runtime-errors",
+      "sourceFiles": [
+        "crates/codecaddie-core/src/service.rs",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs"
+      ],
+      "rustTests": [
+        "privacy_adversarial_provider_errors_receive_content_free_local_correlation_details",
+        "privacy_adversarial_crash_markers_become_content_free_reliability_events"
+      ],
+      "assertion": "Repository-owned provider-boundary failures become signed local aggregates and SLO alerts with stable correlation IDs and allowlisted codes, never provider output, repository source, prompts, attachments, goal text, or free-form errors."
+    },
+    {
+      "id": "local-trace-spans",
+      "sourceFiles": [
+        "crates/codecaddie-core/src/runtime_health_assurance.rs",
+        "crates/codecaddie-core/src/reliability.rs",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "protocol/local-reliability-event-v1.schema.json"
+      ],
+      "rustTests": [
+        "privacy_adversarial_runtime_health_and_trace_spans_drive_local_aggregates"
+      ],
+      "assertion": "Every completed local operation's signed operation_completed record is also its local trace span; the correlation ID is its trace identity and the closed schema excludes source, secrets, personal data, and free-form attributes while legacy trace_span_completed history remains readable."
+    },
+    {
+      "id": "runtime-telemetry-cross-surface",
+      "sourceFiles": [
+        "crates/codecaddie-core/src/runtime_health_assurance.rs",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "config/runtime-health-measurement.json",
+        "protocol/local-reliability-event-v1.schema.json"
+      ],
+      "rustTests": [
+        "privacy_adversarial_all_runtime_telemetry_surfaces_exclude_private_content"
+      ],
+      "assertion": "One adversarial production-boundary test proves that logs, traces, metrics, alerts, crash reports, and crash alerts share a closed local schema and exclude source, attachments, secrets, disallowed personal data, marker bodies, and free-form panic details."
+    },
+    {
+      "id": "provider-snapshot-retention",
+      "sourceFile": "crates/codecaddie-core/src/repository.rs",
+      "rustTests": [
+        "privacy_adversarial_snapshot_cleanup_after_success_failure_and_map_generation",
+        "privacy_adversarial_snapshot_cleanup_after_timeout_and_task_cancellation"
+      ],
+      "assertion": "Disposable source snapshots are confined and removed after success, failure, map generation, timeout, and cancellation."
+    },
+    {
+      "id": "updater-result-mailbox-and-startup-ipc",
+      "sourceFiles": [
+        "crates/codecaddie-core/src/bin/codecaddie-updater.rs",
+        "crates/codecaddie-core/src/update.rs",
+        "crates/codecaddie-core/src/service/system.rs",
+        "apps/desktop/src/core_ipc.zig",
+        "crates/codecaddie-core/tests/updater_result_privacy.rs",
+        "protocol/updater-result-v1.schema.json"
+      ],
+      "rustTests": [
+        "privacy_adversarial_updater_mailbox_and_startup_ipc_are_content_free"
+      ],
+      "assertion": "The one-shot updater mailbox and startup-only system.ping projection accept only schema version, failed status, and fixed codes; repository source, attachment content, secrets, raw errors, paths, aliases, and free-form fields cannot cross either surface."
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+packages:
+  - .
+
+allowBuilds:
+  scriptc: true
+
+# Newly published versions wait seven days before pnpm will resolve them, so a
+# hijacked release cannot land through a routine install. The exclusions are
+# the exact pinned Native SDK and scriptc builds this repository already trusts.
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - '@native-sdk/cli-darwin-arm64@0.10.1'
+  - '@native-sdk/cli-darwin-x64@0.10.1'
+  - '@native-sdk/cli-linux-arm64-gnu@0.10.1'
+  - '@native-sdk/cli-linux-arm64-musl@0.10.1'
+  - '@native-sdk/cli-linux-x64-gnu@0.10.1'
+  - '@native-sdk/cli-linux-x64-musl@0.10.1'
+  - '@native-sdk/cli-win32-arm64@0.10.1'
+  - '@native-sdk/cli-win32-x64@0.10.1'
+  - '@native-sdk/cli@0.10.1'
+  - '@scriptc/compiler@0.0.35'
+  - '@scriptc/runtime@0.0.35'
+  - scriptc@0.0.35
+
+patchedDependencies:
+  '@native-sdk/cli@0.10.1': patches/@native-sdk__cli@0.10.1.patch

@@ -1,0 +1,9 @@
+{
+  "id": "request-recommendations-copy-prompt",
+  "protocolVersion": 2,
+  "workspaceId": "workspace-example",
+  "method": "recommendations.copy_prompt",
+  "params": {
+    "prompt": "Implement the selected recommendations."
+  }
+}

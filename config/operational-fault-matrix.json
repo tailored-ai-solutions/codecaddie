@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie maintainers",
+  "reviewCadence": "Per release and after a reliability incident",
+  "localOnly": true,
+  "scenarios": [
+    {
+      "id": "provider-timeout",
+      "productionSurface": "provider runner timeout and scan response finalization",
+      "test": "operational_fault_matrix_proves_metrics_errors_and_alerts_end_to_end",
+      "expectedErrorCode": "provider_timeout",
+      "expectedMetric": "failed scan.run operation",
+      "expectedAlert": "customer_operation_failed"
+    },
+    {
+      "id": "malformed-provider-response",
+      "productionSurface": "structured output parsing and evidence validation",
+      "test": "operational_fault_matrix_proves_metrics_errors_and_alerts_end_to_end",
+      "expectedErrorCode": "provider_response_invalid",
+      "expectedMetric": "failed scan.run operation",
+      "expectedAlert": "customer_operation_failed"
+    },
+    {
+      "id": "disk-exhaustion",
+      "productionSurface": "encrypted state and signed event persistence",
+      "test": "operational_fault_matrix_proves_metrics_errors_and_alerts_end_to_end",
+      "expectedErrorCode": "storage_write_failed",
+      "expectedMetric": "failed workspace.recent operation",
+      "expectedAlert": "customer_operation_failed"
+    },
+    {
+      "id": "interrupted-write",
+      "productionSurface": "atomic state promotion and signed ledger append",
+      "test": "operational_fault_matrix_proves_metrics_errors_and_alerts_end_to_end",
+      "expectedErrorCode": "persistence_interrupted",
+      "expectedMetric": "failed workspace.recent operation",
+      "expectedAlert": "customer_operation_failed"
+    },
+    {
+      "id": "telemetry-outage",
+      "productionSurface": "local reliability event append during response finalization",
+      "test": "operational_fault_matrix_proves_metrics_errors_and_alerts_end_to_end",
+      "expectedErrorCode": "local_reliability_unavailable",
+      "expectedMetric": "telemetryRecorded false in source-safe IPC metadata",
+      "expectedAlert": "none because the local ledger is unavailable"
+    }
+  ]
+}

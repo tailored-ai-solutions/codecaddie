@@ -1,0 +1,38 @@
+.{
+    .id = "org.codecaddie.desktop",
+    .name = "codecaddie",
+    .display_name = "CodeCaddie",
+    .description = "Goals, evidence, and action for the software your business depends on.",
+    .version = "0.4.0",
+    .icons = .{"assets/icon.png"},
+    .platforms = .{ "macos", "windows" },
+    .permissions = .{ "view", "command" },
+    .capabilities = .{ "native_views", "gpu_surfaces", "file_drops" },
+    .theme = "geist",
+    .shortcuts = .{
+        .{ .id = "app.command-palette", .key = "k", .modifiers = .{ "primary" } },
+        .{ .id = "app.run-scan", .key = "enter", .modifiers = .{ "primary" } },
+    },
+    .shell = .{
+        .windows = .{
+            .{
+                .label = "main",
+                .title = "CodeCaddie",
+                .width = 1440,
+                .height = 900,
+                .min_width = 1040,
+                .min_height = 700,
+                .restore_state = true,
+                .views = .{
+                    .{ .label = "codecaddie-canvas", .kind = "gpu_surface", .fill = true, .role = "CodeCaddie workspace", .accessibility_label = "CodeCaddie", .gpu_backend = "metal", .gpu_pixel_format = "bgra8_unorm", .gpu_present_mode = "timer", .gpu_alpha_mode = "opaque", .gpu_color_space = "srgb", .gpu_vsync = true },
+                },
+            },
+        },
+    },
+    .security = .{
+        .navigation = .{
+            .allowed_origins = .{},
+            .external_links = .{ .action = "deny" },
+        },
+    },
+}

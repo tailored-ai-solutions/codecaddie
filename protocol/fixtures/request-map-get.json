@@ -1,0 +1,7 @@
+{
+  "id": "desktop-map-get",
+  "protocolVersion": 2,
+  "workspaceId": "workspace-1",
+  "method": "map.get",
+  "params": {}
+}

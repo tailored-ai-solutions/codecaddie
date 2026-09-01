@@ -1,0 +1,9 @@
+---
+description: CodeCaddie agent workflow
+alwaysApply: true
+---
+- Read AGENTS.md first; its invariants and verification recipe apply to every change.
+- If pstack is installed, start substantive work with /poteto-mode. If it is not, tell the user to run /add-plugin pstack and then /setup-pstack.
+- The runtime verification skill is .agents/skills/verify-codecaddie; run it before declaring UI or core work done.
+- Commit with `git commit -s` (DCO); pull requests are squash-merged onto a linear main.
+- Never write development data inside the checkout: use `pnpm dev:isolated` or an explicit CODECADDIE_DATA_DIR outside the repository.

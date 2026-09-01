@@ -1,0 +1,1 @@
+{"id":"req-report-finding","protocolVersion":2,"workspaceId":"workspace-1","method":"reports.finding.get","params":{"reportEventId":"019d0000-0000-7000-8000-000000000001","goalVersionId":"goal-version-1"}}

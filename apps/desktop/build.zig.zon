@@ -1,0 +1,8 @@
+.{
+    .name = .codecaddie,
+    .fingerprint = 0x8fe031eb0b484bd3,
+    .version = "0.4.0",
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{ .native_sdk = .{ .path = "../../node_modules/@native-sdk/cli" } },
+    .paths = .{ "build.zig", "build.zig.zon", "src", "assets", "app.zon", "README.md" },
+}

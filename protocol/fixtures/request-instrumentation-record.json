@@ -1,0 +1,9 @@
+{
+  "id": "request-instrumentation-record",
+  "protocolVersion": 2,
+  "workspaceId": "workspace-example",
+  "method": "instrumentation.record",
+  "params": {
+    "event": "report_opened"
+  }
+}

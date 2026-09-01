@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codecaddie.ai/protocol/persisted-report-evidence-v1.schema.json",
+  "title": "CodeCaddie persisted report evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "repositoryId",
+    "commitSha",
+    "blobOid",
+    "path",
+    "startLine",
+    "endLine",
+    "contentHash",
+    "kind"
+  ],
+  "properties": {
+    "repositoryId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "commitSha": { "type": "string", "pattern": "^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$" },
+    "blobOid": { "type": "string", "pattern": "^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$" },
+    "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "startLine": { "type": "integer", "minimum": 1 },
+    "endLine": { "type": "integer", "minimum": 1 },
+    "contentHash": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+    "kind": {
+      "enum": [
+        "implementation",
+        "test",
+        "configuration",
+        "documentation",
+        "architecture"
+      ]
+    }
+  }
+}

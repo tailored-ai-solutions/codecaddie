@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "owners": {
+    "release": "CodeCaddie maintainers",
+    "security": "CodeCaddie security owner",
+    "reliability": "CodeCaddie reliability owner"
+  },
+  "quality": {
+    "minimumRustLineCoveragePercent": 55,
+    "developerBootstrapMinutes": 15,
+    "criticalVulnerabilitySlaHours": 24,
+    "dependencyUpdateCadenceDays": 7
+  },
+  "performance": {
+    "firstSavedReportP95Seconds": 600,
+    "providerExecutionP95Seconds": 480,
+    "coreRequestP95Milliseconds": 250,
+    "minimumCoreRequestsPerMinute": 120,
+    "maximumRepositoryFiles": 100000,
+    "maximumRepositoryBytes": 2147483648,
+    "maximumReportsPerWorkspace": 1000
+  },
+  "requiredSuites": [
+    "Protected main release gates",
+    "Adversarial privacy and prompt-injection gate",
+    "Ship readiness assurance",
+    "Policy, version, and installers",
+    "Rust",
+    "Reliability and performance release gate",
+    "Clean developer bootstrap",
+    "macOS native (x64)",
+    "macOS native (arm64)",
+    "Windows native (x64)"
+  ],
+  "requiredChecks": [
+    "Protected main release gates",
+    "Adversarial privacy and prompt-injection gate",
+    "Ship readiness assurance",
+    "Policy, version, and installers",
+    "Rust",
+    "Reliability and performance release gate",
+    "Clean developer bootstrap",
+    "macOS native (x64)",
+    "macOS native (arm64)",
+    "Windows native (x64)",
+    "DCO sign-off"
+  ]
+}

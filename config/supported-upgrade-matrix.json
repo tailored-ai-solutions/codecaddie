@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "currentVersion": "0.4.0",
+  "versionIdentity": "semantic-version-plus-build",
+  "supportScope": "Only public semantic-version-plus-build identities listed below are supported prior versions; private development builds and unlisted public builds are outside the supported set.",
+  "firstPublicBaseline": {
+    "status": "pending",
+    "version": "0.4.0",
+    "build": 2001,
+    "reason": "The one-commit public snapshot has no earlier public signed build. The next public commit must mark this baseline established and list build 2001 with its source commit."
+  },
+  "supportedPriorBuilds": [],
+  "requiredJourneys": [
+    "failed_upgrade_rolls_back",
+    "healthy_upgrade_preserves_state",
+    "restart_reopens_encrypted_state",
+    "failed_install_transaction_relaunches_prior_version",
+    "immutable_evidence_still_resolves",
+    "source_privacy_canary_remains_absent"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codecaddie.ai/protocol/updater-result-v1.schema.json",
+  "title": "CodeCaddie updater result v1",
+  "description": "Content-free one-shot result written by the external updater helper and optionally returned by the startup system.ping handshake.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "code"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "status": { "const": "failed" },
+    "code": {
+      "enum": [
+        "installFailed",
+        "reopenFailed",
+        "restartRequired",
+        "manualRepairRequired",
+        "resultUnreadable"
+      ]
+    }
+  }
+}

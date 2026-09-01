@@ -1,0 +1,12 @@
+{
+  "name": "golden-monolith",
+  "private": true,
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "fastify": "latest",
+    "postgres": "latest"
+  }
+}
+

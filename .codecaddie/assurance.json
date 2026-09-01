@@ -1,0 +1,636 @@
+{
+  "schemaVersion": 1,
+  "controls": [
+    {
+      "id": "ship-readiness-assurance",
+      "topics": ["provider-contract", "snapshot-cleanup", "persistence-recovery", "cross-platform", "dependency-updates", "vulnerability-sla", "release-blocking", "keyless-release", "forward-only-latest", "transactional-install-rollback", "recovery-drills"],
+      "artifacts": [
+        "config/ship-readiness.json",
+        ".github/workflows/ci.yml",
+        "scripts/tests/ship-readiness.test.mjs",
+        "scripts/exercise-installed-core.mjs",
+        "apps/desktop/src/first_report_journey_assurance.zig",
+        ".github/workflows/release.yml",
+        ".github/workflows/reconcile-stable-release.yml"
+      ]
+    },
+    {
+      "id": "first-report-lifecycle-event-contract",
+      "topics": ["instrumentation-events", "workspace-created", "analysis-started", "scorecard-generated", "report-saved", "time-to-first-saved-report", "stable-identifiers", "workspace-session", "product-version", "platform-cohort", "repository-source-exclusion"],
+      "artifacts": [
+        "crates/codecaddie-core/src/decision_journey_assurance.rs",
+        "scripts/tests/product-metrics.test.mjs",
+        "protocol/local-product-events-v2.schema.json",
+        "config/serialized-field-admission-v1.json"
+      ]
+    },
+    {
+      "id": "first-report-state-matrix",
+      "topics": ["automated-journey-tests", "useful-empty", "validation", "cancellation", "provider-failure", "retry", "successful-save", "unambiguous-workspace-state"],
+      "artifacts": [
+        "apps/desktop/src/first_report_journey_assurance.zig",
+        "apps/desktop/src/tests.zig",
+        "config/first-report-journey-v1.json"
+      ]
+    },
+    {
+      "id": "immutable-claim-action-rejection",
+      "topics": ["report-data-model", "scorecard-claim", "prioritized-action", "repository-identifier", "full-commit-hash", "immutable-evidence-locator", "missing-reference-rejection", "unresolvable-reference", "recorded-commit"],
+      "artifacts": [
+        "crates/codecaddie-core/src/report_integrity.rs",
+        "scripts/tests/report-integrity.test.mjs",
+        "crates/codecaddie-core/src/product_assurance.rs"
+      ]
+    },
+    {
+      "id": "repeat-review-event-metric-contract",
+      "topics": ["report-revisited", "evidence-opened", "repeat-analysis-started", "comparison-generated", "stable-identifiers", "repository-owned-metric", "product-owner", "evidence-completeness", "repeat-usage", "review-cadence"],
+      "artifacts": [
+        "crates/codecaddie-core/src/decision_journey_assurance.rs",
+        "crates/codecaddie-core/src/product_assurance.rs",
+        "scripts/tests/product-metrics.test.mjs",
+        "protocol/local-product-events-v2.schema.json",
+        "config/product-metrics.json"
+      ]
+    },
+    {
+      "id": "complete-performance-budget-gate",
+      "topics": ["version-controlled-performance-budgets", "first-report-latency", "provider-execution-latency", "throughput", "repository-size", "capacity-targets", "repeatable-load-tests", "capacity-tests", "release-gate-regression"],
+      "artifacts": [
+        "crates/codecaddie-core/src/product_assurance.rs",
+        "crates/codecaddie-core/src/provider/runner.rs",
+        "crates/codecaddie-core/tests/performance_gate.rs",
+        "config/reliability-gates.json",
+        ".github/workflows/ci.yml",
+        "docs/RELIABILITY-AND-PERFORMANCE.md"
+      ]
+    },
+    {
+      "id": "saved-evidence-checkout-switch",
+      "topics": ["saved-report-experience", "analyzed-commit", "evidence-references", "automated-tests", "switching-working-tree", "saved-evidence-immutable", "displayed-reference-preserved", "original-blob-reopened"],
+      "artifacts": [
+        "scripts/exercise-saved-evidence-checkout.mjs",
+        "crates/codecaddie-core/src/decision_journey_assurance.rs",
+        "config/report-evidence-policy.json",
+        ".github/workflows/ci.yml",
+        "crates/codecaddie-core/src/product_assurance.rs",
+        "docs/EVIDENCE-AND-COMPARISONS.md"
+      ]
+    },
+    {
+      "id": "backup-restore-rto-gate",
+      "topics": ["encrypted-backups", "defined-schedule", "tested-backup", "tested-restore", "recovery-time-target", "recovery-point-target", "restore-elapsed-time", "rto-regression-gate"],
+      "artifacts": [
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "config/disaster-recovery.json",
+        "docs/DISASTER-RECOVERY.md",
+        "docs/BACKUP-AND-PORTABILITY.md"
+      ]
+    },
+    {
+      "id": "dependency-vulnerability-release-sla",
+      "topics": ["dependency-vulnerabilities", "every-ci-run", "daily-scan", "critical-findings", "block-release", "named-owner", "documented-sla"],
+      "artifacts": [
+        "scripts/tests/reliability-gates.test.mjs",
+        ".github/workflows/ci.yml",
+        "config/ship-readiness.json",
+        "SECURITY.md"
+      ]
+    },
+    {
+      "id": "complete-required-suite-enforcement",
+      "topics": ["branch-protection", "release-workflow", "privacy-suite", "evidence-integrity", "migration-suite", "performance-suite", "packaging-suite", "cross-platform-suite", "pass-before-merge", "pass-before-release"],
+      "artifacts": [
+        "scripts/tests/protected-ref.test.mjs",
+        "scripts/tests/reliability-gates.test.mjs",
+        "scripts/tests/release-workflows.test.mjs",
+        ".github/workflows/ci.yml",
+        ".github/workflows/release.yml",
+        ".github/workflows/reconcile-stable-release.yml"
+      ]
+    },
+    {
+      "id": "desktop-actionable-failure-matrix",
+      "topics": ["desktop-application", "actionable-failure-states", "source-safe", "correlation-ids", "retry-guidance", "recovery-guidance", "repository-failure", "provider-failure", "storage-failure", "migration-failure", "export-failure"],
+      "artifacts": [
+        "apps/desktop/src/tests.zig",
+        "apps/desktop/src/core_ipc.zig",
+        "apps/desktop/src/app.native",
+        "docs/OPERATIONAL-ASSURANCE.md"
+      ]
+    },
+    {
+      "id": "all-runtime-telemetry-privacy-sinks",
+      "topics": ["telemetry-schemas", "automated-tests", "logs", "traces", "metrics", "alerts", "crash-reports", "repository-source-exclusion", "secrets-exclusion", "personal-data-exclusion"],
+      "artifacts": [
+        "crates/codecaddie-core/src/runtime_health_assurance.rs",
+        "config/source-canary-matrix-v1.json",
+        "scripts/tests/source-canary-matrix.test.mjs",
+        "protocol/local-reliability-event-v1.schema.json"
+      ]
+    },
+    {
+      "id": "supported-environments",
+      "topics": ["support-matrix", "platforms", "versions", "architectures", "filesystems", "storage-locations", "provider-configurations", "unsupported-combinations", "capacity"],
+      "artifacts": [
+        "docs/SUPPORT-MATRIX.md",
+        ".github/workflows/ci.yml",
+        "config/reliability-gates.json"
+      ]
+    },
+    {
+      "id": "local-service-objectives",
+      "topics": ["slo", "latency", "availability", "crash-free", "first-report-creation", "report-persistence", "provider-execution", "alert-thresholds", "named-ownership"],
+      "artifacts": [
+        "config/service-level-objectives.json",
+        "docs/LOCAL-RELIABILITY.md",
+        "crates/codecaddie-core/src/reliability.rs"
+      ]
+    },
+    {
+      "id": "local-runtime-health-measurement",
+      "topics": ["client-crashes", "provider-errors", "provider-bridge", "service-component", "server-side-measurement", "local-reporting", "correlation", "privacy"],
+      "artifacts": [
+        "crates/codecaddie-core/src/runtime_health_assurance.rs",
+        "config/runtime-health-measurement.json",
+        "crates/codecaddie-core/src/reliability.rs",
+        "crates/codecaddie-core/src/service.rs",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "scripts/tests/runtime-health-measurement.test.mjs",
+        "apps/desktop/src/model.zig",
+        "docs/RUNTIME-HEALTH.md"
+      ]
+    },
+    {
+      "id": "source-safe-failure-recovery",
+      "topics": ["errors", "repository-failure", "provider-failure", "storage-failure", "migration-failure", "export-failure", "correlation", "retry", "recovery", "privacy", "analysis-failures-show-recovery-guidance-local-correlation-reference", "repository-provider-storage-migration-export-failures-source-safe-actionable"],
+      "artifacts": [
+        "apps/desktop/src/tests.zig",
+        "apps/desktop/src/core_ipc.zig",
+        "apps/desktop/src/main.zig",
+        "protocol/local-reliability-event-v1.schema.json",
+        "docs/OPERATIONAL-ASSURANCE.md",
+        "docs/LOCAL-RELIABILITY.md"
+      ]
+    },
+    {
+      "id": "operational-fault-injection",
+      "topics": ["timeout", "malformed-response", "disk-exhaustion", "interrupted-write", "telemetry-outage"],
+      "artifacts": [
+        "crates/codecaddie-core/src/operational_fault_assurance.rs",
+        "config/operational-fault-matrix.json",
+        "crates/codecaddie-core/src/service.rs",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs"
+      ]
+    },
+    {
+      "id": "restart-safe-runtime-and-release-recovery",
+      "topics": ["runtime-kill-switch", "restart", "transactional-install-rollback", "automatic-release", "forward-only-latest", "incident-response", "owned-incident-recovery", "post-incident-learning-loop", "corrective-actions", "paused-provider-execution-survives-restart-without-touching-customer-state", "paused-or-unverifiable-runtime-controls-fail-safely-before-customer-state-changes"],
+      "artifacts": [
+        "crates/codecaddie-core/src/runtime_controls.rs",
+        "crates/codecaddie-core/src/service.rs",
+        "config/runtime-feature-controls.json",
+        "config/ship-readiness.json",
+        "docs/INCIDENT-RESPONSE.md",
+        ".github/workflows/release.yml",
+        ".github/workflows/reconcile-stable-release.yml"
+      ]
+    },
+    {
+      "id": "first-report-decision-journey",
+      "topics": ["approved-goals", "repository-selection", "scorecard", "recommendations", "saved-first-report", "empty-state", "validation", "cancellation", "provider-failure", "retry", "successful-save"],
+      "artifacts": [
+        "apps/desktop/src/first_report_journey_assurance.zig",
+        "crates/codecaddie-core/src/decision_journey_assurance.rs",
+        "crates/codecaddie-core/src/product_assurance.rs",
+        "config/first-report-journey-v1.json",
+        "apps/desktop/src/tests.zig",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "scripts/tests/product-metrics.test.mjs",
+        "config/product-metrics.json",
+        "protocol/local-product-events-v2.schema.json"
+      ]
+    },
+    {
+      "id": "runtime-lifecycle-measurement",
+      "topics": ["workspace-creation", "goal-approval", "analysis-start", "analysis-completion", "report-open", "prompt-copy", "repeat-analysis", "stable-identifiers", "time-to-first-saved-report", "report-revisited", "evidence-opened", "comparison-generated"],
+      "artifacts": [
+        "crates/codecaddie-core/src/decision_journey_assurance.rs",
+        "crates/codecaddie-core/src/product_assurance.rs",
+        "protocol/local-product-events-v2.schema.json",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "crates/codecaddie-core/src/service/instrumentation.rs",
+        "apps/desktop/src/main.zig",
+        "apps/desktop/src/tests.zig",
+        "config/product-metrics.json",
+        "scripts/tests/product-metrics.test.mjs"
+      ]
+    },
+    {
+      "id": "immutable-evidence-review",
+      "topics": ["repository-identifier", "full-commit", "immutable-evidence", "missing-reference-rejection", "unresolvable-reference", "working-tree-mutation", "saved-evidence", "same-workspace", "report-linking", "non-overwrite", "change-comparison", "decision-rule"],
+      "artifacts": [
+        "crates/codecaddie-core/src/decision_journey_assurance.rs",
+        "crates/codecaddie-core/src/product_assurance.rs",
+        "crates/codecaddie-core/src/report_integrity.rs",
+        "config/report-evidence-policy.json",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "crates/codecaddie-core/src/local_state/heatmap.rs",
+        "apps/desktop/src/tests.zig",
+        "scripts/tests/report-integrity.test.mjs",
+        "docs/EVIDENCE-AND-COMPARISONS.md"
+      ]
+    },
+    {
+      "id": "local-data-governance",
+      "topics": ["consent", "retention", "deletion", "minimization", "exceptions", "least-privilege", "encryption-at-rest", "encryption-in-transit", "tamper-evident", "privileged-actions", "audit"],
+      "artifacts": [
+        "scripts/tests/privacy-contract-assurance.test.mjs",
+        "scripts/tests/local-transport-protection.test.mjs",
+        "crates/codecaddie-core/src/product_assurance.rs",
+        "crates/codecaddie-core/src/at_rest.rs",
+        "config/security-audit-controls.json",
+        "config/data-governance.json",
+        "config/data-governance-exceptions.json",
+        "config/serialized-field-admission-v1.json",
+        "docs/DATA-GOVERNANCE.md",
+        "docs/DEVELOPMENT.md",
+        "crates/codecaddie-domain/src/event.rs",
+        "config/source-canary-matrix-v1.json"
+      ]
+    },
+    {
+      "id": "cross-sink-privacy-proof",
+      "topics": ["reports", "ipc", "diagnostics", "logs", "word-export", "recovery-export", "coding-prompts", "analytics", "crash-markers", "provider-errors", "serialized-field-admission", "telemetry-schemas-logs-traces-metrics-alerts-crash-reports"],
+      "artifacts": [
+        "scripts/tests/source-canary-matrix.test.mjs",
+        "config/source-canary-matrix-v1.json",
+        "scripts/tests/privacy-contract-assurance.test.mjs",
+        "config/serialized-field-admission-v1.json",
+        "config/runtime-health-measurement.json",
+        "protocol/local-reliability-event-v1.schema.json",
+        "crates/codecaddie-core/src/runtime_health_assurance.rs",
+        "crates/codecaddie-core/src/analyzer/report_materialize.rs",
+        "crates/codecaddie-core/src/provider/stream.rs",
+        "crates/codecaddie-core/src/export.rs",
+        "crates/codecaddie-core/src/service/recommendations.rs",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs"
+      ]
+    },
+    {
+      "id": "local-transport-protection",
+      "topics": ["least-privilege", "encryption-at-rest", "encryption-in-transit", "local-only-transport", "same-user-ipc", "staged-request", "provider-subprocess", "audit-log", "source-exclusion", "least-privilege-local-transport-encryption-signed-audits"],
+      "artifacts": [
+        "scripts/tests/local-transport-protection.test.mjs",
+        "scripts/tests/privacy-contract-assurance.test.mjs",
+        "config/local-transport-protection.json",
+        "crates/codecaddie-core/src/at_rest.rs",
+        "config/security-audit-controls.json",
+        "crates/codecaddie-core/src/main.rs",
+        "crates/codecaddie-core/src/provider/runner.rs",
+        "apps/desktop/src/platform.zig"
+      ]
+    },
+    {
+      "id": "disposable-snapshot-lifecycle",
+      "topics": ["exact-commit", "read-only", "checkout-confinement", "cleanup", "success", "failure", "cancellation", "timeout", "retry", "application-restart", "map-generation"],
+      "artifacts": [
+        "crates/codecaddie-core/src/repository_snapshot_lifecycle_assurance.rs",
+        "config/ship-readiness.json",
+        "crates/codecaddie-core/src/repository.rs",
+        "crates/codecaddie-core/src/provider/runner.rs",
+        "crates/codecaddie-core/src/analyzer/scan.rs",
+        "crates/codecaddie-core/src/analyzer/map_generate.rs",
+        "config/source-canary-matrix-v1.json",
+        "scripts/tests/source-canary-matrix.test.mjs",
+        "docs/SECURITY_MODEL.md"
+      ]
+    },
+    {
+      "id": "snapshot-lifecycle-executable-gate",
+      "topics": ["provider-execution", "bounded-disposable-snapshot", "immutable-commit-identity", "guaranteed-cleanup", "success", "failure", "cancellation", "retry", "application-restart", "automated-lifecycle-tests"],
+      "artifacts": [
+        "scripts/exercise-recovery-matrix.mjs",
+        "config/executable-recovery-matrix.json",
+        "crates/codecaddie-core/src/repository_snapshot_lifecycle_assurance.rs",
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "id": "provider-contract-runtime",
+      "topics": ["provider-adapters", "versioned-request", "versioned-response", "evidence-contract", "error-contract", "timeout", "cancellation", "malformed-results", "no-fallback"],
+      "artifacts": [
+        "crates/codecaddie-core/src/provider/contract_assurance.rs",
+        "crates/codecaddie-core/src/provider/contract.rs",
+        "config/ship-readiness.json",
+        "protocol/provider-contract-v1.schema.json",
+        "crates/codecaddie-core/src/provider/runner.rs",
+        "crates/codecaddie-core/src/provider/stream.rs",
+        "crates/codecaddie-core/src/provider/claude.rs",
+        "crates/codecaddie-core/src/provider/codex.rs",
+        "crates/codecaddie-core/src/provider/grok.rs"
+      ]
+    },
+    {
+      "id": "migration-write-recovery",
+      "topics": ["migration", "safe-recovery", "idempotence", "retryable-writes", "single-write-semantics", "interrupted-write", "atomic-replace", "jsonl-recovery", "stale-temporary", "duplicate-event-prevention"],
+      "artifacts": [
+        "crates/codecaddie-core/src/persistence.rs",
+        "crates/codecaddie-core/src/storage.rs",
+        "crates/codecaddie-core/src/local_state/identity.rs",
+        "config/ship-readiness.json",
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "id": "cross-platform-release-journeys",
+      "topics": ["macos", "windows", "install", "analysis", "restart", "export", "cancellation", "provider-failure", "package-installation"],
+      "artifacts": [
+        "scripts/exercise-installed-core.mjs",
+        "apps/desktop/src/first_report_journey_assurance.zig",
+        ".github/workflows/ci.yml",
+        "config/ship-readiness.json",
+        "config/reliability-gates.json",
+        "docs/SUPPORT-MATRIX.md",
+        "apps/desktop/src/tests.zig",
+        "scripts/install-local-macos.sh",
+        "scripts/install-local-windows.ps1"
+      ]
+    },
+    {
+      "id": "dependency-maintenance",
+      "topics": ["dependency-updates", "weekly-cadence", "cargo", "npm", "github-actions", "vulnerability-scanning"],
+      "artifacts": [
+        "config/ship-readiness.json",
+        ".github/dependabot.yml",
+        ".github/workflows/ci.yml",
+        "config/reliability-gates.json",
+        "scripts/tests/reliability-gates.test.mjs",
+        "docs/RELIABILITY-AND-PERFORMANCE.md"
+      ]
+    },
+    {
+      "id": "required-check-enforcement",
+      "topics": ["protected-main", "required-suites", "branch-protection", "release-workflow", "privacy", "evidence-integrity", "migration", "performance", "packaging", "cross-platform", "exact-commit", "protected-direct-main-runs-satisfy-branch-gate"],
+      "artifacts": [
+        "scripts/tests/reliability-gates.test.mjs",
+        "scripts/tests/protected-ref.test.mjs",
+        "scripts/tests/release-workflows.test.mjs",
+        "config/reliability-gates.json",
+        "scripts/check-protected-ref.mjs",
+        ".github/workflows/ci.yml",
+        ".github/workflows/release.yml",
+        "config/ship-readiness.json",
+        "docs/RELEASING.md"
+      ]
+    },
+    {
+      "id": "recovery-drills",
+      "topics": ["backup", "restore", "recovery", "rpo", "rto", "interruption", "disk-capacity", "lost-key", "manifest-integrity", "repeat-history", "privacy_adversarial_portable_backup_authenticates_and_restores_transactionally", "storage_capacity_failures_preserve_the_committed_value_for_retry"],
+      "artifacts": [
+        "config/disaster-recovery.json",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "crates/codecaddie-core/src/persistence.rs",
+        "crates/codecaddie-core/src/storage.rs",
+        "crates/codecaddie-core/src/local_state/identity.rs",
+        "crates/codecaddie-core/src/local_state/portable_backup.rs",
+        "docs/BACKUP-AND-PORTABILITY.md",
+        "docs/DISASTER-RECOVERY.md",
+        "config/ship-readiness.json"
+      ]
+    },
+    {
+      "id": "recovery-failure-executable-gate",
+      "topics": ["documented-recovery-procedures", "interrupted-backup", "partial-restore", "migration-failure", "lost-encryption-material", "insufficient-disk-capacity", "executable-tests", "recoverable-cases"],
+      "artifacts": [
+        "scripts/exercise-recovery-matrix.mjs",
+        "config/executable-recovery-matrix.json",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "crates/codecaddie-core/src/persistence.rs",
+        "crates/codecaddie-core/src/storage.rs",
+        "crates/codecaddie-core/src/local_state/identity.rs",
+        "docs/DISASTER-RECOVERY.md",
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "id": "artifact-provenance",
+      "topics": ["signing", "reproducibility", "bit-for-bit", "macos-artifact", "windows-artifact", "deterministic-pe", "checksums", "provenance", "version", "ci-evidence"],
+      "artifacts": [
+        "scripts/tests/release-workflows.test.mjs",
+        "scripts/tests/reproducible-builds.test.mjs",
+        "scripts/verify-reproducible-build.mjs",
+        "docs/REPRODUCIBLE-BUILDS.md",
+        ".github/workflows/ci.yml",
+        ".github/workflows/release.yml",
+        "docs/RELEASING.md",
+        "config/reliability-gates.json"
+      ]
+    },
+    {
+      "id": "report-reference-integrity",
+      "topics": ["scorecard-claim", "prioritized-action", "repository-identifier", "full-commit", "immutable-evidence-locator", "missing-reference", "unresolvable-reference", "model-rejection"],
+      "artifacts": [
+        "crates/codecaddie-core/src/report_integrity.rs",
+        "config/report-evidence-policy.json",
+        "scripts/tests/report-integrity.test.mjs",
+        "docs/REPORT-INTEGRITY.md"
+      ]
+    },
+    {
+      "id": "repeat-analysis-comparisons",
+      "topics": ["repeat-analysis", "same-workspace", "report-linking", "full-commit", "prior-results", "non-overwrite", "evidence-change-comparison", "report-revisited", "evidence-opened", "comparison-generated"],
+      "artifacts": [
+        "crates/codecaddie-core/src/decision_journey_assurance.rs",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "crates/codecaddie-core/src/local_state/heatmap.rs",
+        "apps/desktop/src/tests.zig",
+        "config/report-evidence-policy.json",
+        "scripts/tests/report-integrity.test.mjs",
+        "docs/EVIDENCE-AND-COMPARISONS.md",
+        "docs/LOCAL-PRODUCT-MEASUREMENT.md"
+      ]
+    },
+    {
+      "id": "report-save-and-export-policy",
+      "topics": ["evidence-coverage", "complete", "save", "export", "blocked", "unsupported", "unverified", "decision-rule"],
+      "artifacts": [
+        "config/report-evidence-policy.json",
+        "crates/codecaddie-core/src/report_integrity.rs",
+        "crates/codecaddie-core/src/analyzer/report_materialize.rs",
+        "scripts/tests/report-integrity.test.mjs",
+        "docs/REPORT-INTEGRITY.md"
+      ]
+    },
+    {
+      "id": "serialized-field-admission",
+      "topics": ["export", "diagnostic-generation", "explicit-allowlist", "serialized-fields", "new-field-rejection", "source-text", "secret-leakage"],
+      "artifacts": [
+        "crates/codecaddie-domain/src/event.rs",
+        "crates/codecaddie-core/src/product_assurance.rs",
+        "config/source-canary-matrix-v1.json",
+        "scripts/tests/source-canary-matrix.test.mjs",
+        "scripts/tests/report-integrity.test.mjs",
+        "crates/codecaddie-core/src/privacy_test_support.rs",
+        "docs/REPORT-INTEGRITY.md",
+        "docs/DATA-GOVERNANCE.md"
+      ]
+    },
+    {
+      "id": "third-party-license-inventory",
+      "topics": ["dependency-licenses", "inventory", "commercial-distribution-policy", "reviewed-exceptions", "release-evidence", "repository-storage"],
+      "artifacts": [
+        "config/dependency-license-exceptions.json",
+        "docs/licenses/RUST-DEPENDENCY-LICENSES.md",
+        "deny.toml",
+        "about.toml",
+        "THIRD_PARTY_NOTICES.md",
+        "scripts/rust-dependency-licenses.hbs",
+        ".github/workflows/ci.yml",
+        ".github/workflows/release.yml",
+        "docs/RELIABILITY-AND-PERFORMANCE.md",
+        "docs/RELEASING.md"
+      ]
+    },
+    {
+      "id": "dependency-vulnerability-gates",
+      "topics": ["dependency-vulnerabilities", "every-ci-run", "daily-scan", "critical-finding", "release-block", "remediation-owner", "remediation-sla", "daily-dependency-scans-fail-closed-before-release"],
+      "artifacts": [
+        "scripts/tests/reliability-gates.test.mjs",
+        "scripts/tests/release-workflows.test.mjs",
+        "config/reliability-gates.json",
+        ".github/workflows/ci.yml",
+        ".github/workflows/release.yml",
+        "docs/RELIABILITY-AND-PERFORMANCE.md",
+        "docs/RELEASING.md"
+      ]
+    },
+    {
+      "id": "clean-developer-bootstrap",
+      "topics": ["developer-bootstrap", "clean-machine", "empty-runner-cache", "locked-dependencies", "setup-time-target", "hosted-runner"],
+      "artifacts": [
+        ".github/workflows/ci.yml",
+        "config/reliability-gates.json",
+        "scripts/tests/reliability-gates.test.mjs",
+        "docs/DEVELOPMENT.md",
+        "docs/RELIABILITY-AND-PERFORMANCE.md"
+      ]
+    },
+    {
+      "id": "performance-capacity-gates",
+      "topics": ["performance-budgets", "first-report-latency", "provider-execution-latency", "throughput", "repository-size", "capacity-targets", "repeatable-load-test", "release-regression-gate", "performance-gate-keeps-the-framed-core-within-latency-and-throughput-budgets", "repository-capacity-gate-accepts-each-boundary-and-rejects-regression", "provider-timeout-and-cancellation-terminate-descendant-processes", "end-to-end-first-report-journey"],
+      "artifacts": [
+        "crates/codecaddie-core/tests/performance_gate.rs",
+        "crates/codecaddie-core/src/provider_repository_mcp.rs",
+        "crates/codecaddie-core/src/provider/runner.rs",
+        "crates/codecaddie-core/src/decision_journey_assurance.rs",
+        "crates/codecaddie-core/src/product_assurance.rs",
+        "scripts/tests/reliability-gates.test.mjs",
+        "config/reliability-gates.json",
+        ".github/workflows/ci.yml",
+        "docs/RELIABILITY-AND-PERFORMANCE.md"
+      ]
+    },
+    {
+      "id": "local-observability-and-alerts",
+      "topics": ["structured-logs", "metrics", "traces", "error-tracking", "correlation-ids", "actionable-alerting", "slo-breaches", "customer-impacting-failures", "local-alerts"],
+      "artifacts": [
+        "crates/codecaddie-core/src/runtime_health_assurance.rs",
+        "protocol/local-reliability-event-v1.schema.json",
+        "config/runtime-health-measurement.json",
+        "config/service-level-objectives.json",
+        "crates/codecaddie-core/src/reliability.rs",
+        "crates/codecaddie-domain/src/event.rs",
+        "apps/desktop/src/model.zig",
+        "apps/desktop/src/tests.zig",
+        "scripts/tests/runtime-health-measurement.test.mjs",
+        "scripts/tests/reliability-contract.test.mjs",
+        "docs/LOCAL-RELIABILITY.md",
+        "docs/RUNTIME-HEALTH.md"
+      ]
+    },
+    {
+      "id": "scheduled-backup-runtime",
+      "topics": ["encrypted-backup", "defined-schedule", "automatic-run", "application-resume", "backup-restore-test", "rpo", "rto", "local-key", "no-keychain"],
+      "artifacts": [
+        "config/disaster-recovery.json",
+        "config/service-level-objectives.json",
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "crates/codecaddie-core/src/local_state/portable_backup.rs",
+        "crates/codecaddie-core/src/service/workspace.rs",
+        "apps/desktop/src/main.zig",
+        "apps/desktop/src/core_ipc.zig",
+        "apps/desktop/src/tests.zig",
+        "docs/BACKUP-AND-PORTABILITY.md",
+        "docs/DISASTER-RECOVERY.md"
+      ]
+    },
+    {
+      "id": "incident-response-runbook",
+      "topics": ["severity-levels", "incident-roles", "customer-safe-diagnostics", "containment", "recovery-verification", "corrective-action-artifact", "post-incident-learning"],
+      "artifacts": [
+        "docs/INCIDENT-RESPONSE.md",
+        ".github/workflows/release.yml",
+        ".github/workflows/reconcile-stable-release.yml",
+        "config/runtime-feature-controls.json",
+        "protocol/local-reliability-event-v1.schema.json",
+        "docs/incidents/README.md",
+        "docs/incidents/TEMPLATE.md"
+      ]
+    },
+    {
+      "id": "prior-version-upgrade-rollback",
+      "topics": [
+        "supported-prior-versions",
+        "upgrade-failure",
+        "rollback",
+        "saved-reports",
+        "configuration",
+        "immutable-evidence",
+        "source-privacy",
+        "supported_prior_version_upgrade_and_rollback_matrix_preserves_real_encrypted_workspace_state",
+        "assert-workspace-after-paused-failed-healthy-and-rollback-transactions",
+        "failed-upgrade-healthy-upgrade-deliberate-rollback"
+      ],
+      "artifacts": [
+        "scripts/exercise-supported-prior-binaries.mjs",
+        "crates/codecaddie-core/src/bin/codecaddie-updater.rs",
+        "config/supported-upgrade-matrix.json",
+        ".github/workflows/ci.yml",
+        "docs/UPGRADE-COMPATIBILITY.md",
+        "docs/RELEASING.md"
+      ]
+    },
+    {
+      "id": "local-transport-privacy-boundary",
+      "topics": ["least-privilege", "encryption-at-rest", "encryption-in-transit", "same-user-local-exception", "no-sensitive-data-crosses", "no-network-boundary", "no-identity-boundary", "tamper-evident-audit", "repository-source-exclusion"],
+      "artifacts": [
+        "scripts/tests/local-transport-protection.test.mjs",
+        "config/local-transport-protection.json",
+        "crates/codecaddie-core/src/at_rest.rs",
+        "config/security-audit-controls.json"
+      ]
+    },
+    {
+      "id": "installed-cross-platform-complete-journey",
+      "topics": ["cross-platform-end-to-end-tests", "installation", "repository-analysis", "saved-report-persistence", "restart-recovery", "export", "cancellation", "provider-failure", "macos", "windows"],
+      "artifacts": [
+        "scripts/exercise-installed-core.mjs",
+        ".github/workflows/ci.yml",
+        "scripts/tests/ship-readiness.test.mjs",
+        "config/ship-readiness.json",
+        "docs/SUPPORT-MATRIX.md"
+      ]
+    },
+    {
+      "id": "complete-backup-history-restore",
+      "topics": ["automated-recovery-test", "workspace-configuration", "saved-reports", "immutable-commit-references", "repeat-analysis-history", "repository-source-exclusion", "authenticated-backup", "transactional-restore"],
+      "artifacts": [
+        "crates/codecaddie-core/src/local_state/workspace_store.rs",
+        "crates/codecaddie-core/src/local_state/portable_backup.rs",
+        "docs/BACKUP-AND-PORTABILITY.md",
+        "docs/DISASTER-RECOVERY.md"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie security owner",
+  "localOnly": true,
+  "transportBoundary": {
+    "desktopCore": "Inherited device-local process pipes carry closed protocol fields and are never opened as a network listener.",
+    "updates": "Artifact downloads require an HTTPS release URL and send no workspace, repository, report, attachment, or goal data.",
+    "auditStorage": "Signed audit records are encrypted at rest with the owner-only local content key inside the single data root."
+  },
+  "executableTest": "product_assurance::security_relevant_operations_append_signed_content_free_audit_records",
+  "controls": [
+    {
+      "action": "workspace and device authorization",
+      "leastPrivilege": "Only a registered Editor device can append signed workspace events.",
+      "auditRecord": "signed workspace event envelope with actor, device, epoch, and timestamp",
+      "operationCodes": ["workspace.create", "goals.approve"]
+    },
+    {
+      "action": "provider-backed analysis",
+      "leastPrivilege": "Provider tools are read-only, snapshot-confined, bounded, and receive no CodeCaddie credentials.",
+      "auditRecord": "content-free signed scan.run reliability event and immutable report identity",
+      "operationCodes": ["scan.run"]
+    },
+    {
+      "action": "backup import and export",
+      "leastPrivilege": "Operations require an existing workspace scope and memory-only user-supplied passphrase material.",
+      "auditRecord": "content-free signed workspace.backup operation event with correlation ID",
+      "operationCodes": ["workspace.backup.export", "workspace.backup.import"]
+    },
+    {
+      "action": "report export",
+      "leastPrivilege": "Export accepts only a persisted validated report and a user-selected writable destination.",
+      "auditRecord": "content-free signed reports.export_word operation event with correlation ID",
+      "operationCodes": ["reports.export_word"]
+    },
+    {
+      "action": "local measurement admission",
+      "leastPrivilege": "Only closed, code-owned event kinds and identifiers are accepted; unknown serialized fields fail deserialization.",
+      "auditRecord": "signed content-free instrumentation.record and reliability.record events with stable identifiers",
+      "operationCodes": ["instrumentation.record", "reliability.record"]
+    }
+  ]
+}

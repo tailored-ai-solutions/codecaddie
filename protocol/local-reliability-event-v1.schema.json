@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codecaddie.ai/protocol/local-reliability-event-v1.schema.json",
+  "title": "CodeCaddie local reliability event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "correlationId",
+    "retryable",
+    "productVersion",
+    "platform"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": {
+      "enum": [
+        "operation_completed",
+        "trace_span_completed",
+        "desktop_session_started",
+        "desktop_session_ended",
+        "desktop_crash_detected",
+        "slo_alert_raised"
+      ]
+    },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "sessionId": { "$ref": "#/$defs/identifier" },
+    "operation": { "$ref": "#/$defs/identifier" },
+    "outcome": { "enum": ["succeeded", "failed", "cancelled"] },
+    "errorCategory": {
+      "enum": ["repository", "provider", "storage", "migration", "export", "protocol", "internal"]
+    },
+    "errorCode": { "$ref": "#/$defs/identifier" },
+    "retryable": { "type": "boolean" },
+    "elapsedMilliseconds": { "type": "integer", "minimum": 0 },
+    "alertCode": { "$ref": "#/$defs/identifier" },
+    "productVersion": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "platform": { "type": "string", "minLength": 1, "maxLength": 64 }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96,
+      "pattern": "^[A-Za-z0-9._-]+$"
+    }
+  }
+}

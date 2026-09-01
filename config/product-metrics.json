@@ -1,0 +1,69 @@
+{
+  "$schema": "../protocol/first-report-activation-v1.schema.json",
+  "schemaVersion": 1,
+  "eventSchema": "../protocol/local-product-events-v2.schema.json",
+  "storage": {
+    "location": "signed-workspace-ledger",
+    "transmission": "none",
+    "retention": "workspace-lifetime",
+    "deletion": "delete-with-workspace",
+    "export": "aggregate-only"
+  },
+  "activation": {
+    "metricId": "first-saved-report-within-ten-minutes-v1",
+    "denominator": {
+      "event": "workspace_created",
+      "unit": "unique-workspace",
+      "selection": "first-per-signed-workspace-ledger"
+    },
+    "numerator": {
+      "event": "time_to_first_saved_report",
+      "selection": "first-per-workspace",
+      "elapsedField": "elapsedMilliseconds",
+      "maximumElapsedMilliseconds": 600000
+    },
+    "missingNumerator": "not-qualified",
+    "target": {
+      "operator": "greater-than-or-equal",
+      "rate": 0.8
+    },
+    "segmentBy": ["productVersion", "platformFamily", "cohort"],
+    "requiredPlatformFamilies": ["macos", "windows"],
+    "platformFamilySource": "platform-prefix-before-first-hyphen"
+  },
+  "repeatReview": {
+    "name": "repeat-report-review",
+    "startEvent": "repeat_analysis_started",
+    "completionEvents": ["comparison_generated", "report_revisited"],
+    "groupBy": ["productVersion", "platform", "cohort"]
+  },
+  "decisionCycle": {
+    "name": "approved-goal-to-saved-report",
+    "startEvent": "goal_approved",
+    "completionEvent": "report_saved",
+    "statistic": "average-elapsed-seconds"
+  },
+  "evidenceCompleteness": {
+    "name": "validated-criterion-evidence-rate",
+    "source": "saved-report-projection",
+    "denominator": "all-current-success-checks",
+    "numerator": "success-checks-with-a-validated-verdict-and-at-least-one-commit-resolved-evidence-anchor",
+    "unverifiedTreatment": "included-in-denominator-not-numerator",
+    "target": {
+      "operator": "equal",
+      "rate": 1.0
+    },
+    "reviewCadence": "after-every-saved-report-and-monthly",
+    "decision": "investigate-any-rate-below-one-before-relying-on-the-scorecard"
+  },
+  "privacyDenylist": [
+    "repositoryPath",
+    "repositorySource",
+    "attachmentContent",
+    "goalText",
+    "prompt",
+    "freeText",
+    "userIdentity",
+    "networkDestination"
+  ]
+}

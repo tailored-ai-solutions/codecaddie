@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codecaddie.ai/protocol/first-report-activation-v1.schema.json",
+  "title": "CodeCaddie first saved report activation metric v1",
+  "description": "Versioned local calculation contract for the percentage of unique workspaces that save their first report within ten minutes, segmented by product version, macOS or Windows platform family, and release cohort.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "storage",
+    "activation",
+    "repeatReview",
+    "decisionCycle",
+    "privacyDenylist"
+  ],
+  "properties": {
+    "$schema": { "const": "../protocol/first-report-activation-v1.schema.json" },
+    "schemaVersion": { "const": 1 },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["location", "transmission", "retention", "deletion", "export"],
+      "properties": {
+        "location": { "const": "signed-workspace-ledger" },
+        "transmission": { "const": "none" },
+        "retention": { "const": "workspace-lifetime" },
+        "deletion": { "const": "delete-with-workspace" },
+        "export": { "const": "aggregate-only" }
+      }
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metricId",
+        "denominator",
+        "numerator",
+        "missingNumerator",
+        "target",
+        "segmentBy",
+        "requiredPlatformFamilies",
+        "platformFamilySource"
+      ],
+      "properties": {
+        "metricId": { "const": "first-saved-report-within-ten-minutes-v1" },
+        "denominator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["event", "unit", "selection"],
+          "properties": {
+            "event": { "const": "workspace_created" },
+            "unit": { "const": "unique-workspace" },
+            "selection": { "const": "first-per-signed-workspace-ledger" }
+          }
+        },
+        "numerator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["event", "selection", "elapsedField", "maximumElapsedMilliseconds"],
+          "properties": {
+            "event": { "const": "time_to_first_saved_report" },
+            "selection": { "const": "first-per-workspace" },
+            "elapsedField": { "const": "elapsedMilliseconds" },
+            "maximumElapsedMilliseconds": { "const": 600000 }
+          }
+        },
+        "missingNumerator": { "const": "not-qualified" },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operator", "rate"],
+          "properties": {
+            "operator": { "const": "greater-than-or-equal" },
+            "rate": { "const": 0.8 }
+          }
+        },
+        "segmentBy": {
+          "const": ["productVersion", "platformFamily", "cohort"]
+        },
+        "requiredPlatformFamilies": {
+          "const": ["macos", "windows"]
+        },
+        "platformFamilySource": { "const": "platform-prefix-before-first-hyphen" }
+      }
+    },
+    "repeatReview": { "type": "object" },
+    "decisionCycle": { "type": "object" },
+    "privacyDenylist": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"id":"req-report-history","protocolVersion":2,"workspaceId":"workspace-1","method":"reports.history.list","params":{"limit":50}}

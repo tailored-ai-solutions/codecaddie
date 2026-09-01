@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codecaddie.ai/protocol/local-product-events-v1.schema.json",
+  "title": "CodeCaddie local product event v1 (historical)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "sessionId",
+    "productVersion",
+    "platform",
+    "cohort"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": {
+      "enum": [
+        "workspace_created",
+        "goal_approved",
+        "analysis_started",
+        "scorecard_generated",
+        "report_saved",
+        "time_to_first_saved_report",
+        "report_revisited",
+        "evidence_opened",
+        "repeat_analysis_started",
+        "comparison_generated",
+        "prompt_copied"
+      ]
+    },
+    "sessionId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "productVersion": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "platform": {
+      "type": "string",
+      "pattern": "^(macos|windows|linux)-[A-Za-z0-9_]+$",
+      "maxLength": 64
+    },
+    "cohort": { "type": "string", "pattern": "^desktop-[0-9]+\\.[0-9]+\\.[0-9]+", "maxLength": 64 },
+    "reportId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "elapsedMilliseconds": { "type": "integer", "minimum": 0 }
+  }
+}

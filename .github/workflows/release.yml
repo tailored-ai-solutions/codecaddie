@@ -1,0 +1,766 @@
+name: Automatic keyless macOS release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+# Preserve every main-push release. Attempts for one immutable commit serialize
+# so a retry can reuse its existing keyless bundle and draft assets safely.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  queue: max
+  cancel-in-progress: false
+
+env:
+  CANONICAL_REPOSITORY: tailored-ai-solutions/codecaddie
+
+jobs:
+  prepare:
+    name: Verify canonical protected-main release identity
+    if: github.repository == 'tailored-ai-solutions/codecaddie' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      build: ${{ steps.release.outputs.build }}
+      tag: ${{ steps.release.outputs.tag }}
+      channel: ${{ steps.release.outputs.channel }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fail closed outside the pinned public repository
+        env:
+          ACTUAL_REPOSITORY_ID: ${{ github.repository_id }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "$CANONICAL_REPOSITORY"
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          configured_repository="$(jq -er .sigstore.repository config/release-trust.json)"
+          configured_repository_id="$(jq -er .sigstore.repositoryId config/release-trust.json)"
+          test "$configured_repository" = "$CANONICAL_REPOSITORY"
+          [[ "$configured_repository_id" =~ ^[1-9][0-9]*$ ]]
+          test "$configured_repository_id" = "$ACTUAL_REPOSITORY_ID"
+          test "$(jq -er .githubRepository config/release-distribution.json)" = "$CANONICAL_REPOSITORY"
+          test "$(jq -er .schemaVersion config/release-distribution.json)" = 2
+          test "$(jq -er .schemaVersion config/release-trust.json)" = 2
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          version: 11.22.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - id: release
+        name: Derive the immutable version and build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          build="$(node scripts/release-build-number.mjs "$GITHUB_SHA")"
+          tag="v$version+$build"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?\+[1-9][0-9]*$ ]]
+          channel=stable
+          if [[ "$version" == *-rc.* ]]; then channel=beta; fi
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" \
+            > existing-release.json 2>existing-release-error.txt; then
+            test "$(jq -er .target_commitish existing-release.json)" = "$GITHUB_SHA"
+          elif ! grep -q '(HTTP 404)' existing-release-error.txt; then
+            cat existing-release-error.txt >&2
+            exit 1
+          fi
+          if git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then
+            test "$(git rev-list -n 1 "$tag")" = "$GITHUB_SHA"
+          fi
+          {
+            echo "version=$version"
+            echo "build=$build"
+            echo "tag=$tag"
+            echo "channel=$channel"
+          } >> "$GITHUB_OUTPUT"
+      - run: pnpm version:check
+      - name: Apply the required private identifier denylist
+        env:
+          PRIVATE_PATTERNS: ${{ secrets.CODECADDIE_PRIVATE_PATTERNS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          pattern_file="$RUNNER_TEMP/codecaddie-private-patterns"
+          test -n "$PRIVATE_PATTERNS"
+          printf '%s\n' "$PRIVATE_PATTERNS" > "$pattern_file"
+          CODECADDIE_PRIVATE_PATTERN_FILE="$pattern_file" \
+            CODECADDIE_REQUIRE_PRIVATE_PATTERNS=1 \
+            ./scripts/check-public-safety.sh
+      - name: Verify immutable GitHub Releases are enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY/immutable-releases" \
+            --jq '.enabled == true or .enforced_by_owner == true')" = true
+      - name: Verify exact-commit CI release gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BUILD: ${{ steps.release.outputs.build }}
+        run: |
+          set -euo pipefail
+          run_id=""
+          for attempt in $(seq 1 120); do
+            runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=100")"
+            run_id="$(jq -r --arg build "$RELEASE_BUILD" '
+              .workflow_runs[]
+              | select(
+                  .name == "CI"
+                  and .head_branch == "main"
+                  and (.event == "push" or ($build == "2001" and .event == "workflow_dispatch"))
+                  and .conclusion == "success"
+                )
+              | .id
+            ' <<<"$runs" | head -n 1)"
+            if [[ -n "$run_id" ]]; then break; fi
+            failed="$(jq -r --arg build "$RELEASE_BUILD" '
+              .workflow_runs[]
+              | select(
+                  .name == "CI"
+                  and .head_branch == "main"
+                  and (.event == "push" or ($build == "2001" and .event == "workflow_dispatch"))
+                  and .status == "completed"
+                  and .conclusion != "success"
+                )
+              | .id
+            ' <<<"$runs" | head -n 1)"
+            if [[ -n "$failed" ]]; then
+              echo "exact-commit CI did not pass for $GITHUB_SHA: $failed" >&2
+              exit 1
+            fi
+            echo "waiting for exact-commit CI ($attempt/120)"
+            sleep 30
+          done
+          test -n "$run_id"
+          jq -er '
+            .requiredSuites
+            | select(type == "array" and length > 0 and all(.[]; type == "string" and length > 0))
+            | .[]
+          ' config/reliability-gates.json > required-suites.txt
+          while IFS= read -r suite; do
+            conclusion="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
+              | REQUIRED_SUITE="$suite" jq -r \
+                '[.jobs[] | select(.name == env.REQUIRED_SUITE) | .conclusion] | if length == 1 then .[0] else "" end')"
+            if [[ "$conclusion" != success ]]; then
+              echo "required suite did not pass for $GITHUB_SHA: $suite ($conclusion)" >&2
+              exit 1
+            fi
+          done < required-suites.txt
+
+  sbom:
+    name: Generate exact-commit CycloneDX SBOM without signing authority
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Prepare CycloneDX output directory
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          mkdir -p release-sbom
+      - name: Generate the run-stable CycloneDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: release-sbom/codecaddie-${{ needs.prepare.outputs.version }}.cdx.json
+          upload-artifact: false
+      - name: Validate the bounded CycloneDX output
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          test "$(find release-sbom -mindepth 1 -maxdepth 1 -type f | wc -l)" = 1
+          jq -e '.bomFormat == "CycloneDX" and (.specVersion | type == "string")' \
+            "release-sbom/codecaddie-$RELEASE_VERSION.cdx.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-sbom
+          if-no-files-found: error
+          retention-days: 3
+          path: release-sbom/*.cdx.json
+
+  macos:
+    name: Import exact-commit notarized universal macOS application
+    needs: prepare
+    environment:
+      name: release-apple
+      url: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+    runs-on: macos-15
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    env:
+      EXPECTED_TEAM_ID: ${{ vars.CODECADDIE_APPLE_TEAM_ID }}
+      EXPECTED_VERSION: ${{ needs.prepare.outputs.version }}
+      EXPECTED_BUILD: ${{ needs.prepare.outputs.build }}
+      EXPECTED_CHANNEL: ${{ needs.prepare.outputs.channel }}
+      XCODE_CLOUD_WORKFLOW_ID: ${{ vars.CODECADDIE_XCODE_CLOUD_WORKFLOW_ID }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify exact import revision and protected configuration
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          [[ "$EXPECTED_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]
+          [[ "$EXPECTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]
+          [[ "$EXPECTED_BUILD" =~ ^[1-9][0-9]*$ ]]
+          [[ "$EXPECTED_CHANNEL" == stable || "$EXPECTED_CHANNEL" == beta ]]
+          [[ "$XCODE_CLOUD_WORKFLOW_ID" =~ ^[A-Fa-f0-9-]{16,}$ ]]
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Download the exact-SHA stapled notarized archive
+        id: xcode_cloud
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ vars.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+        run: |
+          node scripts/fetch-xcode-cloud-artifact.mjs \
+            --workflow-id "$XCODE_CLOUD_WORKFLOW_ID" \
+            --commit "$GITHUB_SHA" \
+            --output-dir "$RUNNER_TEMP/xcode-cloud" \
+            --timeout-seconds 7200 \
+            --poll-seconds 30
+      - name: Validate and package the stapled universal application
+        env:
+          XCODE_CLOUD_ARTIFACT: ${{ steps.xcode_cloud.outputs.artifact_path }}
+          XCODE_CLOUD_PROVENANCE: ${{ steps.xcode_cloud.outputs.provenance_path }}
+        run: |
+          set -euo pipefail
+          export PATH=/usr/bin:/bin:/usr/sbin:/sbin
+          work_root="$RUNNER_TEMP/codecaddie-xcode-cloud-import"
+          archive_entries="$RUNNER_TEMP/codecaddie-xcode-cloud-entries.txt"
+          expected_executables="$RUNNER_TEMP/codecaddie-expected-executables.txt"
+          actual_executables="$RUNNER_TEMP/codecaddie-actual-executables.txt"
+          test ! -e "$work_root"
+          test -f "$XCODE_CLOUD_ARTIFACT"
+          test ! -L "$XCODE_CLOUD_ARTIFACT"
+          test -f "$XCODE_CLOUD_PROVENANCE"
+          artifact_name="$(basename "$XCODE_CLOUD_ARTIFACT")"
+          artifact_size="$(/usr/bin/stat -f '%z' "$XCODE_CLOUD_ARTIFACT")"
+          artifact_sha256="$(/usr/bin/shasum -a 256 "$XCODE_CLOUD_ARTIFACT" | /usr/bin/awk '{print $1}')"
+          jq -e \
+            --arg commit "$GITHUB_SHA" \
+            --arg workflow "$XCODE_CLOUD_WORKFLOW_ID" \
+            --arg file_name "$artifact_name" \
+            --argjson file_size "$artifact_size" \
+            --arg sha256 "$artifact_sha256" \
+            '.schemaVersion == 1
+              and .sourceCommit == $commit
+              and .workflowId == $workflow
+              and .fileType == "STAPLED_NOTARIZED_ARCHIVE"
+              and .fileName == $file_name
+              and .fileSize == $file_size
+              and (.buildRunId | type == "string" and length > 0)
+              and (.artifactId | type == "string" and length > 0)
+              and .sha256 == $sha256' \
+            "$XCODE_CLOUD_PROVENANCE"
+
+          /usr/bin/unzip -Z1 "$XCODE_CLOUD_ARTIFACT" > "$archive_entries"
+          test -s "$archive_entries"
+          if LC_ALL=C grep -E '(^|/)\.\.?(/|$)' "$archive_entries" | grep -q . || \
+            LC_ALL=C grep -E '^/' "$archive_entries" | grep -q . || \
+            LC_ALL=C grep -F $'\\' "$archive_entries" | grep -q .; then
+            echo "Xcode Cloud archive contains an unsafe path" >&2
+            exit 1
+          fi
+          if LC_ALL=C sort "$archive_entries" | uniq -d | grep -q .; then
+            echo "Xcode Cloud archive contains duplicate entries" >&2
+            exit 1
+          fi
+          if /usr/bin/zipinfo -l "$XCODE_CLOUD_ARTIFACT" | awk '$1 ~ /^l/ { found=1 } END { exit !found }'; then
+            echo "Xcode Cloud archive contains a symbolic link" >&2
+            exit 1
+          fi
+          /bin/mkdir -p "$work_root"
+          /usr/bin/ditto -x -k "$XCODE_CLOUD_ARTIFACT" "$work_root"
+          app_count=0
+          app_path=""
+          while IFS= read -r -d '' candidate; do
+            app_count=$((app_count + 1))
+            app_path="$candidate"
+          done < <(find "$work_root" -type d -name CodeCaddie.app -print0)
+          test "$app_count" -eq 1
+          if find "$app_path" -type l -o -type b -o -type c -o -type p -o -type s | grep -q .; then
+            echo "notarized application contains a link or special file" >&2
+            exit 1
+          fi
+
+          plist="$app_path/Contents/Info.plist"
+          /usr/bin/plutil -lint "$plist"
+          expected_short_version="${EXPECTED_VERSION%%-*}"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" = org.codecaddie.desktop
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$plist")" = CodeCaddie
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleName' "$plist")" = CodeCaddie
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$plist")" = codecaddie
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundlePackageType' "$plist")" = APPL
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" = "$expected_short_version"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")" = "$EXPECTED_BUILD"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist")" = 13.0
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CodeCaddieChannel' "$plist")" = "$EXPECTED_CHANNEL"
+
+          printf '%s\n' codecaddie codecaddie-core codecaddie-updater > "$expected_executables"
+          find "$app_path/Contents/MacOS" -mindepth 1 -maxdepth 1 -type f -exec basename {} \; \
+            | LC_ALL=C sort > "$actual_executables"
+          cmp "$expected_executables" "$actual_executables"
+          test "$(find "$app_path/Contents/MacOS" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')" = 3
+          macho_count=0
+          while IFS= read -r -d '' candidate; do
+            if /usr/bin/file -b "$candidate" | grep -q 'Mach-O'; then
+              case "$candidate" in
+                "$app_path/Contents/MacOS/codecaddie"|"$app_path/Contents/MacOS/codecaddie-core"|"$app_path/Contents/MacOS/codecaddie-updater") ;;
+                *) echo "unexpected Mach-O input: $candidate" >&2; exit 1 ;;
+              esac
+              macho_count=$((macho_count + 1))
+            fi
+          done < <(find "$app_path" -type f -print0)
+          test "$macho_count" -eq 3
+
+          for executable_name in codecaddie codecaddie-core codecaddie-updater; do
+            executable="$app_path/Contents/MacOS/$executable_name"
+            archs="$(/usr/bin/lipo -archs "$executable")"
+            [[ " $archs " == *" arm64 "* && " $archs " == *" x86_64 "* ]]
+            test "$(wc -w <<<"$archs" | tr -d ' ')" = 2
+            /usr/bin/codesign --verify --strict --verbose=2 "$executable"
+            signature="$RUNNER_TEMP/codecaddie-$executable_name-signature.txt"
+            /usr/bin/codesign -dv --verbose=4 "$executable" 2> "$signature"
+            grep -Fx "TeamIdentifier=$EXPECTED_TEAM_ID" "$signature"
+            grep -E '^CodeDirectory .*flags=.*runtime' "$signature"
+          done
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$app_path"
+          app_signature="$RUNNER_TEMP/codecaddie-app-signature.txt"
+          /usr/bin/codesign -dv --verbose=4 "$app_path" 2> "$app_signature"
+          grep -Fx "Identifier=org.codecaddie.desktop" "$app_signature"
+          grep -Fx "TeamIdentifier=$EXPECTED_TEAM_ID" "$app_signature"
+          grep -E '^CodeDirectory .*flags=.*runtime' "$app_signature"
+          /usr/bin/xcrun stapler validate "$app_path"
+          # Gatekeeper's verbose assessment prints the signing origin, which
+          # names the team; keep it in a runner-local file like the codesign
+          # output and assert only the verdict and notarization source.
+          assessment="$RUNNER_TEMP/codecaddie-app-assessment.txt"
+          /usr/sbin/spctl --assess --verbose=4 --type execute "$app_path" > "$assessment" 2>&1
+          grep -Fx "$app_path: accepted" "$assessment"
+          grep -Fx "source=Notarized Developer ID" "$assessment"
+
+          output_dir="$GITHUB_WORKSPACE/dist/macos"
+          /bin/mkdir -p "$output_dir"
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent \
+            "$app_path" "$output_dir/CodeCaddie-macOS-universal.zip"
+          /bin/cp "$XCODE_CLOUD_PROVENANCE" "$output_dir/xcode-cloud-provenance.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: codecaddie-macos-universal
+          if-no-files-found: error
+          retention-days: 3
+          path: |
+            dist/macos/CodeCaddie-macOS-universal.zip
+            dist/macos/xcode-cloud-provenance.json
+
+  manifest:
+    name: Build and keyless-sign the immutable update manifest
+    needs: [prepare, sbom, macos]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      attestations: write
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: codecaddie-macos-universal
+          path: release-input
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: release-sbom
+          path: release-candidate
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
+        with:
+          cosign-release: v3.1.3
+      - name: Reuse the exact published SBOM bytes on retry
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir existing-sbom
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+            > existing-sbom/release.json 2>existing-sbom/error.txt; then
+            test "$(jq -er .target_commitish existing-sbom/release.json)" = "$GITHUB_SHA"
+            if jq -r '.assets[].name' existing-sbom/release.json \
+              | grep -Fxq "codecaddie-$RELEASE_VERSION.cdx.json"; then
+              gh release download "$RELEASE_TAG" \
+                --pattern "codecaddie-$RELEASE_VERSION.cdx.json" \
+                --dir existing-sbom
+              cp "existing-sbom/codecaddie-$RELEASE_VERSION.cdx.json" release-candidate/
+            fi
+          elif ! grep -q '(HTTP 404)' existing-sbom/error.txt; then
+            cat existing-sbom/error.txt >&2
+            exit 1
+          fi
+          jq -e '.bomFormat == "CycloneDX" and (.specVersion | type == "string")' \
+            "release-candidate/codecaddie-$RELEASE_VERSION.cdx.json"
+      - name: Construct deterministic ReleaseManifestV2
+        env:
+          RELEASE_BUILD: ${{ needs.prepare.outputs.build }}
+          RELEASE_CHANNEL: ${{ needs.prepare.outputs.channel }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          cp release-input/CodeCaddie-macOS-universal.zip release-candidate/
+          cp release-input/xcode-cloud-provenance.json release-candidate/
+          cp docs/licenses/RUST-DEPENDENCY-LICENSES.md release-candidate/
+          cp config/dependency-license-exceptions.json release-candidate/
+          published_at="$(git show -s --format=%cI "$GITHUB_SHA")"
+          release_base="$(jq -er .releaseDownloadBaseUrl config/release-distribution.json)/$RELEASE_TAG"
+          node scripts/release-manifest.mjs \
+            --version "$RELEASE_VERSION" \
+            --channel "$RELEASE_CHANNEL" \
+            --build "$RELEASE_BUILD" \
+            --output release-candidate \
+            --repository "$GITHUB_REPOSITORY" \
+            --source-commit "$GITHUB_SHA" \
+            --release-base "$release_base" \
+            --release-notes "https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG" \
+            --published "$published_at" \
+            --artifact "macos:arm64:zip:release-candidate/CodeCaddie-macOS-universal.zip" \
+            --artifact "macos:x64:zip:release-candidate/CodeCaddie-macOS-universal.zip"
+      - name: Reuse or create the keyless Sigstore bundle
+        env:
+          CODECADDIE_EXPECTED_REPOSITORY_ID: ${{ github.repository_id }}
+          CODECADDIE_EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
+          CODECADDIE_REQUIRE_COMPLETE_RELEASE: "1"
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir existing-signature
+          release_exists=0
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+            > existing-signature/release.json 2>existing-signature/error.txt; then
+            release_exists=1
+          elif ! grep -q '(HTTP 404)' existing-signature/error.txt; then
+            cat existing-signature/error.txt >&2
+            exit 1
+          fi
+          manifest_exists=0
+          bundle_exists=0
+          published=0
+          if [[ "$release_exists" -eq 1 ]]; then
+            test "$(jq -er .target_commitish existing-signature/release.json)" = "$GITHUB_SHA"
+            test "$(jq -er '.assets | map(.name) | length == (unique | length)' existing-signature/release.json)" = true
+            jq -r '.assets[].name' existing-signature/release.json > existing-signature/assets.txt
+            if grep -Fxq manifest.json existing-signature/assets.txt; then manifest_exists=1; fi
+            if grep -Fxq manifest.sigstore.json existing-signature/assets.txt; then bundle_exists=1; fi
+            if [[ "$(jq -r .draft existing-signature/release.json)" == false ]]; then published=1; fi
+          fi
+          if [[ "$bundle_exists" -eq 1 && "$manifest_exists" -ne 1 ]]; then
+            echo "existing release has a bundle without its signed manifest" >&2
+            exit 1
+          fi
+          if [[ "$manifest_exists" -eq 1 ]]; then
+            gh release download "$RELEASE_TAG" --pattern manifest.json --dir existing-signature
+            cmp release-candidate/manifest.json existing-signature/manifest.json
+          fi
+          if [[ "$bundle_exists" -eq 1 ]]; then
+            gh release download "$RELEASE_TAG" --pattern manifest.sigstore.json --dir existing-signature
+            cp existing-signature/manifest.sigstore.json release-candidate/
+            node scripts/verify-release-manifest.mjs \
+              release-candidate/manifest.json \
+              release-candidate/manifest.sigstore.json \
+              "$RELEASE_TAG" \
+              release-candidate
+            echo "Reused the existing valid keyless bundle"
+          else
+            if [[ "$published" -eq 1 ]]; then
+              echo "published immutable release is missing its Sigstore bundle" >&2
+              exit 1
+            fi
+            cosign sign-blob --yes \
+              --bundle release-candidate/manifest.sigstore.json \
+              release-candidate/manifest.json
+          fi
+          node scripts/verify-release-manifest.mjs \
+            release-candidate/manifest.json \
+            release-candidate/manifest.sigstore.json \
+            "$RELEASE_TAG" \
+            release-candidate
+      - name: Verify exact payload inventory before attestation
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          printf '%s\n' \
+            CodeCaddie-macOS-universal.zip \
+            RUST-DEPENDENCY-LICENSES.md \
+            SHA256SUMS.txt \
+            "codecaddie-$RELEASE_VERSION.cdx.json" \
+            dependency-license-exceptions.json \
+            manifest.json \
+            manifest.sigstore.json \
+            xcode-cloud-provenance.json \
+            | sort > expected-assets.txt
+          find release-candidate -mindepth 1 -maxdepth 1 -type f -exec basename {} \; \
+            | sort > actual-assets.txt
+          cmp expected-assets.txt actual-assets.txt
+      - id: attestation_resume
+        name: Reuse an existing release-local attestation bundle on retry
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          set -euo pipefail
+          reuse=false
+          mkdir existing-attestations
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+            > existing-attestations/release.json 2>existing-attestations/error.txt; then
+            test "$(jq -er .target_commitish existing-attestations/release.json)" = "$GITHUB_SHA"
+            if jq -r '.assets[].name' existing-attestations/release.json \
+              | grep -Fxq release-attestations.jsonl; then
+              gh release download "$RELEASE_TAG" \
+                --pattern release-attestations.jsonl \
+                --dir release-candidate
+              reuse=true
+            fi
+          elif ! grep -q '(HTTP 404)' existing-attestations/error.txt; then
+            cat existing-attestations/error.txt >&2
+            exit 1
+          fi
+          echo "reuse=$reuse" >> "$GITHUB_OUTPUT"
+      - name: Attest every immutable release payload
+        if: steps.attestation_resume.outputs.reuse != 'true'
+        id: provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a
+        with:
+          subject-path: release-candidate/*
+      - name: Retain and verify the release-local attestation bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_ATTESTATIONS: ${{ steps.provenance.outputs.bundle-path }}
+          REUSED_ATTESTATIONS: ${{ steps.attestation_resume.outputs.reuse }}
+        run: |
+          set -euo pipefail
+          if [[ "$REUSED_ATTESTATIONS" != true ]]; then
+            test -n "$NEW_ATTESTATIONS"
+            cp "$NEW_ATTESTATIONS" release-candidate/release-attestations.jsonl
+          fi
+          test -s release-candidate/release-attestations.jsonl
+          for artifact in release-candidate/*; do
+            if [[ "$(basename "$artifact")" == release-attestations.jsonl ]]; then continue; fi
+            gh attestation verify "$artifact" \
+              --bundle release-candidate/release-attestations.jsonl \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --source-ref refs/heads/main \
+              --source-digest "$GITHUB_SHA" \
+              --deny-self-hosted-runners
+          done
+      - name: Verify exact candidate inventory
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          printf '%s\n' \
+            CodeCaddie-macOS-universal.zip \
+            RUST-DEPENDENCY-LICENSES.md \
+            SHA256SUMS.txt \
+            "codecaddie-$RELEASE_VERSION.cdx.json" \
+            dependency-license-exceptions.json \
+            manifest.json \
+            manifest.sigstore.json \
+            release-attestations.jsonl \
+            xcode-cloud-provenance.json \
+            | sort > expected-final-assets.txt
+          find release-candidate -mindepth 1 -maxdepth 1 -type f -exec basename {} \; \
+            | sort > actual-final-assets.txt
+          cmp expected-final-assets.txt actual-final-assets.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-candidate
+          if-no-files-found: error
+          retention-days: 3
+          path: release-candidate/*
+
+  publish-release:
+    name: Publish the immutable GitHub Release without changing Latest
+    needs: [prepare, manifest]
+    environment:
+      name: release-production
+      url: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      attestations: read
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: release-candidate
+          path: release-candidate
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
+        with:
+          cosign-release: v3.1.3
+      - name: Verify candidate before any GitHub Release mutation
+        env:
+          CODECADDIE_EXPECTED_REPOSITORY_ID: ${{ github.repository_id }}
+          CODECADDIE_EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
+          CODECADDIE_REQUIRE_COMPLETE_RELEASE: "1"
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/verify-release-manifest.mjs \
+            release-candidate/manifest.json \
+            release-candidate/manifest.sigstore.json \
+            "$RELEASE_TAG" \
+            release-candidate
+      - name: Create or resume the exact-SHA draft
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          awk '/^## \['"$RELEASE_VERSION"'\]/{flag=1; next} /^## \[/{flag=0} flag' \
+            CHANGELOG.md > release-notes.md
+          test -s release-notes.md || printf 'CodeCaddie %s\n' "$RELEASE_TAG" > release-notes.md
+          if ! gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+            > candidate-release.json 2>candidate-release-error.txt; then
+            if ! grep -q '(HTTP 404)' candidate-release-error.txt; then
+              cat candidate-release-error.txt >&2
+              exit 1
+            fi
+            gh release create "$RELEASE_TAG" \
+              --draft \
+              --target "$GITHUB_SHA" \
+              --title "CodeCaddie $RELEASE_TAG" \
+              --notes-file release-notes.md
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > candidate-release.json
+          fi
+          test "$(jq -er .target_commitish candidate-release.json)" = "$GITHUB_SHA"
+          test "$(jq -er '.assets | map(.name) | length == (unique | length)' candidate-release.json)" = true
+          was_draft="$(jq -er .draft candidate-release.json)"
+          if [[ "$was_draft" == false ]]; then
+            test "$(jq -er .immutable candidate-release.json)" = true
+          fi
+          echo "was_draft=$was_draft" >> "$GITHUB_OUTPUT"
+      - name: Upload only missing draft assets and verify immutable reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir existing-assets
+          find release-candidate -mindepth 1 -maxdepth 1 -type f -exec basename {} \; \
+            | sort > expected-assets.txt
+          jq -r '.assets[].name' candidate-release.json | sort > remote-assets.txt
+          comm -23 remote-assets.txt expected-assets.txt > unexpected-assets.txt
+          test ! -s unexpected-assets.txt
+          while IFS= read -r name; do
+            gh release download "$RELEASE_TAG" --pattern "$name" --dir existing-assets
+            cmp "release-candidate/$name" "existing-assets/$name"
+          done < remote-assets.txt
+          comm -23 expected-assets.txt remote-assets.txt > missing-assets.txt
+          if [[ "$(jq -r .draft candidate-release.json)" == false ]]; then
+            test ! -s missing-assets.txt
+          else
+            while IFS= read -r name; do
+              gh release upload "$RELEASE_TAG" "release-candidate/$name"
+            done < missing-assets.txt
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+            --jq '.assets[].name' | sort > final-assets.txt
+          cmp expected-assets.txt final-assets.txt
+      - name: Re-download and verify the complete draft
+        env:
+          CODECADDIE_EXPECTED_REPOSITORY_ID: ${{ github.repository_id }}
+          CODECADDIE_EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
+          CODECADDIE_REQUIRE_COMPLETE_RELEASE: "1"
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir published-release
+          gh release download "$RELEASE_TAG" --dir published-release
+          find published-release -mindepth 1 -maxdepth 1 -type f -exec basename {} \; \
+            | sort > downloaded-assets.txt
+          cmp expected-assets.txt downloaded-assets.txt
+          node scripts/verify-release-manifest.mjs \
+            published-release/manifest.json \
+            published-release/manifest.sigstore.json \
+            "$RELEASE_TAG" \
+            published-release
+          for artifact in published-release/*; do
+            if [[ "$(basename "$artifact")" == release-attestations.jsonl ]]; then continue; fi
+            gh attestation verify "$artifact" \
+              --bundle published-release/release-attestations.jsonl \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --source-ref refs/heads/main \
+              --source-digest "$GITHUB_SHA" \
+              --deny-self-hosted-runners
+          done
+      - name: Publish a verified beta without changing GitHub Latest
+        if: needs.prepare.outputs.channel == 'beta' && steps.candidate.outputs.was_draft == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease --latest=false
+          test "$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease,isImmutable \
+            --jq '.isDraft == false and .isPrerelease == true and .isImmutable == true')" = true
+          tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
+            --jq 'select(.object.type == "commit") | .object.sha')"
+          test "$tag_sha" = "$GITHUB_SHA"
+
+  reconcile-stable:
+    name: Publish the forward-only stable high-water mark
+    if: needs.prepare.outputs.channel == 'stable'
+    needs: [prepare, publish-release]
+    permissions:
+      attestations: read
+      contents: write
+    uses: ./.github/workflows/reconcile-stable-release.yml
+    with:
+      tag: ${{ needs.prepare.outputs.tag }}

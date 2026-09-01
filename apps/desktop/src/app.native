@@ -1,0 +1,1029 @@
+<template name="activity-feed">
+  <card padding="0">
+    <column gap="0" role="list" label="Provider activity">
+      <row padding="12" gap="8" cross="center">
+        <text size="sm" foreground="accent"><span mono="true">PROVIDER ACTIVITY</span></text>
+        <spacer grow="1"/>
+        <if test="{operationRunning}"><badge>LIVE</badge></if>
+        <else><badge variant="secondary" foreground="text_muted">RECENT</badge></else>
+      </row>
+      <separator/>
+      <if test="{hasCurrentActivity}">
+        <scroll height="150" value="{activityScrollOffset}" on-scroll="activity_scrolled">
+          <column padding="12" gap="7">
+            <for each="activityLines" as="line"><row role="listitem" label="{line.text}"><text size="sm" foreground="text_muted"><span mono="true">{line.text}</span></text></row></for>
+          </column>
+        </scroll>
+      </if>
+      <else><row height="76" padding="16" gap="10" cross="center"><icon name="circle-dot" width="16" height="16" foreground="accent" label=""/><text wrap="true">Preparing {activeProviderName}. The first repository activity will appear here.</text></row></else>
+    </column>
+  </card>
+</template>
+
+<template name="heatmap-cell" args="visible label accessible finding return_focus cell_width is_na is_missing is_broken is_incomplete is_functional is_strong">
+  <column gap="2"><if test="{visible}">
+      <stack width="{cell_width}" height="52" role="gridcell" label="{label}">
+        <if test="{is_na}"><button grow="1" background="surface_subtle" foreground="text_muted" radius="sm" label="{accessible}" on-press="open_finding:{finding}" autofocus="{return_focus}">{label}</button></if>
+        <else><button grow="1" background="surface_pressed" foreground="text" radius="sm" icon="chevron-right" icon-placement="trailing" label="{accessible}" on-press="open_finding:{finding}" autofocus="{return_focus}">{label}</button></else>
+      </stack>
+      <if test="{is_missing}"><row width="{cell_width}" height="4" radius="sm" background="destructive"/></if>
+      <if test="{is_broken}"><row width="{cell_width}" height="4" radius="sm" background="syntax_keyword"/></if>
+      <if test="{is_incomplete}"><row width="{cell_width}" height="4" radius="sm" background="syntax_constant"/></if>
+      <if test="{is_functional}"><row width="{cell_width}" height="4" radius="sm" background="syntax_literal"/></if>
+      <if test="{is_strong}"><row width="{cell_width}" height="4" radius="sm" background="success"/></if>
+      <if test="{is_na}"><row width="{cell_width}" height="4" radius="sm" background="text_muted"/></if>
+    </if></column>
+</template>
+
+<template name="level-swatch" args="is_na is_missing is_broken is_incomplete is_functional is_strong">
+  <column>
+    <if test="{is_missing}"><row width="12" height="12" radius="sm" background="destructive"/></if>
+    <if test="{is_broken}"><row width="12" height="12" radius="sm" background="syntax_keyword"/></if>
+    <if test="{is_incomplete}"><row width="12" height="12" radius="sm" background="syntax_constant"/></if>
+    <if test="{is_functional}"><row width="12" height="12" radius="sm" background="syntax_literal"/></if>
+    <if test="{is_strong}"><row width="12" height="12" radius="sm" background="success"/></if>
+    <if test="{is_na}"><row width="12" height="12" radius="sm" background="text_muted"/></if>
+  </column>
+</template>
+
+<panel background="background">
+  <if test="{mainContentVisible}">
+  <column grow="1" background="background">
+  <row padding="12" gap="12" cross="center" background="surface">
+    <image image="{brandImage}" width="24" height="24" label="CodeCaddie icon"/>
+    <text><span mono="true">codecaddie</span></text>
+    <if test="{hasProject}">
+      <text foreground="text_muted">/</text>
+      <stack>
+        <button variant="ghost" size="sm" icon="chevron-down" icon-placement="trailing" on-press="toggle_project_menu" label="{workspaceName ++ ' project menu'}">{workspaceName}</button>
+        <if test="{projectMenuOpen}">
+          <dropdown-menu anchor="below" anchor-alignment="start" on-dismiss="close_project_menu" label="Project menu">
+            <menu-item disabled="true">{repositoryPath}</menu-item>
+            <menu-item icon="edit" on-press="edit_context">Edit project context</menu-item>
+            <menu-item icon="plus" on-press="new_project">New project</menu-item>
+            <menu-item icon="settings" on-press="open_settings">App settings</menu-item>
+            <menu-item icon="info" on-press="open_help">Help and documentation</menu-item>
+          </dropdown-menu>
+        </if>
+      </stack>
+    </if>
+    <spacer grow="1"/>
+    <if test="{providerAvailable}">
+      <button variant="outline" size="sm" on-press="toggle_provider_menu" label="{activeProviderName ++ ' — choose AI provider'}" autofocus="{providerReturnFocus}">{activeProviderName}</button>
+      <button variant="ghost" size="icon" icon="settings" on-press="open_settings" label="Provider settings"/>
+    </if>
+    <else>
+      <button variant="primary" size="sm" on-press="install_grok">Install Grok</button>
+    </else>
+    <button variant="ghost" size="icon" icon="info" on-press="open_help" label="Help and documentation"/>
+  </row>
+  <separator/>
+
+  <if test="{isGoals or isReport}">
+    <tabs label="Workspace sections">
+      <button selected="{isGoals}" on-press="show_goals">Goals</button>
+      <button selected="{isReport}" on-press="show_report">Report</button>
+    </tabs>
+  </if>
+
+  <if test="{coreUnavailable}">
+    <column padding="16" gap="12" background="surface_subtle" role="group" label="Local analysis engine unavailable">
+      <alert variant="destructive" text="The local analysis engine is not running"><text wrap="true">CodeCaddie could not start or verify its bundled core process, so projects, goals, and analysis are paused. Retry now, or restart or reinstall CodeCaddie if this keeps happening. Data saved on this device is untouched.</text></alert>
+      <row main="end"><button variant="primary" on-press="retry_core">Retry</button></row>
+    </column>
+  </if>
+
+  <if test="{operationRunning}">
+    <row padding="12" gap="12" cross="center" background="surface_subtle">
+      <progress width="160" label="Current operation progress"/>
+      <column grow="1" gap="2">
+        <if test="{generationRunning}"><text><span weight="medium">Generating editable goals with {activeProviderName}</span></text></if>
+        <if test="{goalsSaving}"><text><span weight="medium">Saving goals on this device</span></text></if>
+        <if test="{scanRunning}"><column gap="2"><text><span weight="medium">Analyzing the repository with {activeProviderName}</span></text><text size="sm" foreground="text_muted">Provider analyses typically take several minutes.</text></column></if>
+        <text size="sm" foreground="text_muted">{latestActivityLine}</text>
+      </column>
+      <text size="sm" foreground="text_muted"><span mono="true">{operationElapsedLabel}</span></text>
+      <if test="{generationRunning}"><button variant="outline" size="sm" on-press="cancel_generation">Cancel</button></if>
+      <if test="{scanRunning}"><button variant="outline" size="sm" on-press="cancel_analysis">Cancel</button></if>
+    </row>
+    <separator/>
+  </if>
+
+  <scroll grow="1" value="{mainScrollOffset}" on-scroll="main_scrolled">
+    <column padding="24" gap="24">
+      <if test="{isRepository}">
+        <row main="center">
+          <column width="520" gap="24">
+            <stepper active="0"><step>Repository</step><step>Context</step><step>Goals</step></stepper>
+            <card padding="24">
+              <column gap="16">
+                <column gap="4">
+                  <text size="sm" foreground="text_muted"><span mono="true">NEW PROJECT</span></text>
+                  <text size="heading" wrap="true">Choose a repository</text>
+                  <text foreground="text_muted" wrap="true">Select the local project you want CodeCaddie to analyze.</text>
+                </column>
+                <column gap="8">
+                  <text size="sm">Repository path</text>
+                  <row gap="8" cross="center">
+                    <text-field grow="1" text="{setupRepositoryPath}" placeholder="/path/to/local/repository" label="Repository path" on-input="repository_path_input" autofocus="true"/>
+                    <if test="{repositoryPicking}"><button variant="outline" disabled="true">Opening...</button></if>
+                    <else><button variant="outline" icon="folder" on-press="choose_repository">Choose folder</button></else>
+                  </row>
+                  <if test="{repositoryValid}"><row gap="6" cross="center"><icon name="check-circle" width="16" height="16" foreground="success" label=""/><text size="sm">Repository found</text></row></if>
+                </column>
+                <text size="sm" foreground="text_muted" wrap="true">Your selected provider may process the repository snapshot under its privacy terms.</text>
+                <if test="{hasError}"><alert variant="destructive" text="Repository unavailable"><text wrap="true">{errorMessage}</text></alert></if>
+                <row main="end">
+                  <if test="{repositoryValidating}"><button variant="primary" disabled="true">Checking repository...</button></if>
+                  <else><button variant="primary" on-press="continue_repository">Continue</button></else>
+                </row>
+              </column>
+            </card>
+          </column>
+        </row>
+      </if>
+
+      <if test="{isContext}">
+        <row main="center">
+          <column width="640" gap="16">
+            <row gap="12" cross="center">
+              <button variant="ghost" size="sm" icon="chevron-left" on-press="back_to_repository">Back</button>
+              <spacer grow="1"/>
+              <stepper active="1"><step>Repository</step><step>Context</step><step>Goals</step></stepper>
+            </row>
+            <card padding="24">
+              <column gap="16">
+                <column gap="4">
+                  <text size="sm" foreground="text_muted"><span mono="true">OPTIONAL CONTEXT</span></text>
+                  <text size="heading" wrap="true">Help CodeCaddie understand the project</text>
+                  <text foreground="text_muted" wrap="true">Add anything that would make the goals more relevant. You can skip this and return later.</text>
+                </column>
+                <column gap="4" padding="12" background="surface_subtle" radius="md">
+                  <text size="sm">Repository</text>
+                  <text size="sm" foreground="text_muted"><span mono="true">{setupRepositoryPath}</span></text>
+                </column>
+                <row gap="16">
+                  <column grow="1" gap="8"><text size="sm">Company or product</text><text-field text="{setupCompany}" placeholder="Optional" label="Company or product" on-input="company_input"/></column>
+                  <column grow="1" gap="8"><text size="sm">Website</text><text-field text="{setupWebsite}" placeholder="https://example.com" label="Website" on-input="website_input"/><text size="sm" foreground="text_muted">Reference only; CodeCaddie does not fetch it.</text></column>
+                </row>
+                <column gap="8">
+                  <text size="sm">What should CodeCaddie know?</text>
+                  <column gap="4"><textarea text="{setupNotes}" placeholder="Business priorities, customer promises, release constraints, or anything else that matters." label="Project notes" on-input="notes_input"/><text size="sm" foreground="text_muted">A sentence or two here, or an attached product document, unlocks AI goal generation.</text></column>
+                </column>
+                <column gap="8">
+                  <text size="sm">Project files</text>
+                  <if test="{contextFilesDragActive}">
+                    <column global-key="project-files-drop-zone" role="group" label="Project files drop zone" padding="16" gap="8" background="surface_pressed" radius="md">
+                      <row gap="12" cross="center">
+                        <text grow="1" wrap="true" foreground="accent">Release to add files.</text>
+                        <if test="{contextFilesPicking}"><button variant="outline" size="sm" disabled="true">Opening...</button></if>
+                        <else><button variant="outline" size="sm" on-press="add_context_files">Add files</button></else>
+                      </row>
+                      <text size="sm" foreground="text_muted">PDF, PPTX, DOCX, TXT, and Markdown are supported. Added file contents are sent to the selected AI provider when goals are generated.</text>
+                      <if test="{hasContextFiles}">
+                        <separator/>
+                        <row gap="10" cross="start"><text grow="1" size="sm"><span mono="true">{setupFileSummary}</span></text><button size="sm" variant="ghost" on-press="clear_context_files">Clear</button></row>
+                      </if>
+                    </column>
+                  </if>
+                  <else>
+                    <column global-key="project-files-drop-zone" role="group" label="Project files drop zone" padding="16" gap="8" background="surface_subtle" radius="md">
+                      <row gap="12" cross="center">
+                        <text grow="1" wrap="true">Drop files here or choose local project files.</text>
+                        <if test="{contextFilesPicking}"><button variant="outline" size="sm" disabled="true">Opening...</button></if>
+                        <else><button variant="outline" size="sm" on-press="add_context_files">Add files</button></else>
+                      </row>
+                      <text size="sm" foreground="text_muted">PDF, PPTX, DOCX, TXT, and Markdown are supported. Added file contents are sent to the selected AI provider when goals are generated.</text>
+                      <if test="{hasContextFiles}">
+                        <separator/>
+                        <row gap="10" cross="start"><text grow="1" size="sm"><span mono="true">{setupFileSummary}</span></text><button size="sm" variant="ghost" on-press="clear_context_files">Clear</button></row>
+                      </if>
+                    </column>
+                  </else>
+                </column>
+                <if test="{hasError}"><alert variant="destructive" text="Check this context"><text wrap="true">{errorMessage}</text></alert></if>
+                <if test="{hasNotice}"><alert variant="secondary" text="Saved on this device"><text wrap="true">{noticeMessage}</text></alert></if>
+                <if test="{workspaceCreating}">
+                  <row padding="12" gap="12" cross="center" background="surface_subtle" radius="md">
+                    <progress grow="1" label="Saving project context"/>
+                    <if test="{hasProject}"><text grow="1">Saving the project context...</text></if>
+                    <else><text grow="1">Creating the local project...</text></else>
+                    <button variant="outline" size="sm" on-press="cancel_workspace">Cancel</button>
+                  </row>
+                </if>
+                <else>
+                  <row main="space_between" gap="12">
+                    <if test="{hasProject}"><button variant="ghost" on-press="skip_context">Cancel</button></if>
+                    <else><button variant="ghost" on-press="skip_context">Skip for now</button></else>
+                    <if test="{workspaceRetryReady}"><button variant="primary" on-press="finish_context">Retry saving</button></if>
+                    <else><if test="{hasProject}"><button variant="primary" on-press="finish_context">Save context</button></if>
+                    <else><button variant="primary" on-press="finish_context">Continue to goals</button></else></else>
+                  </row>
+                </else>
+              </column>
+            </card>
+          </column>
+        </row>
+      </if>
+
+      <if test="{isGoals}">
+        <row main="center">
+        <column width="{reportContentWidth}" gap="24">
+          <row cross="start" gap="24">
+            <column grow="1" gap="4">
+              <text size="sm" foreground="text_muted"><span mono="true">GOALS</span></text>
+              <text size="heading">Goals</text>
+              <text foreground="text_muted">Set the outcomes that matter. Then analyze the repository.</text>
+            </column>
+            <row gap="8" cross="center">
+              <if test="{hasAnalysis}"><button variant="outline" size="sm" on-press="show_report">View latest report</button></if>
+              <if test="{hasGoals}"><button variant="ghost" size="sm" on-press="generate_goals" disabled="{operationRunning}">Generate goals</button></if>
+              <column gap="4" cross="end">
+                <button variant="primary" size="sm" on-press="analyze" disabled="{not canAnalyze}" autofocus="{analysisFocus}">Analyze repository</button>
+                <if test="{goalsNeedCompletion}"><text size="sm" wrap="true" width="260">{incompleteGoalHint}</text></if>
+                <else><if test="{providerMissingForAnalysis}"><text size="sm" wrap="true" width="260">Install or select an AI provider to analyze.</text></if></else>
+              </column>
+            </row>
+          </row>
+
+          <if test="{generationRunning}"><use template="activity-feed"/></if>
+          <if test="{scanRunning}"><use template="activity-feed"/></if>
+          <if test="{scanFailed}">
+            <column gap="12">
+              <alert variant="destructive" text="Analysis did not finish"><text wrap="true">{errorMessage}</text></alert>
+              <row gap="8"><button variant="primary" size="sm" on-press="analyze" disabled="{not canAnalyze}" label="Retry analysis — the previous analysis did not finish and no report was saved">Retry analysis</button><if test="{hasAnalysis}"><button variant="outline" size="sm" on-press="show_report">Open latest saved analysis</button></if></row>
+            </column>
+          </if>
+          <else><if test="{hasError}"><alert variant="destructive" text="Needs attention"><text wrap="true">{errorMessage}</text></alert></if></else>
+          <if test="{hasNotice}"><alert variant="secondary" text="Status"><text wrap="true">{noticeMessage}</text></alert></if>
+          <if test="{hasActivityLog}">
+            <column gap="8">
+              <row>
+                <if test="{activityLogOpen}"><button variant="ghost" size="sm" on-press="toggle_activity_log">Hide activity log</button></if>
+                <else><button variant="ghost" size="sm" on-press="toggle_activity_log">Show activity log</button></else>
+              </row>
+              <if test="{activityLogOpen}"><use template="activity-feed"/></if>
+            </column>
+          </if>
+
+          <if test="{hasGoals}">
+            <row gap="8" cross="center">
+              <text size="sm">{goalCountLabel}</text>
+              <text size="sm" foreground="text_muted">Priority order</text>
+              <spacer grow="1"/>
+              <if test="{goalsDirty}"><badge accent="warning" accent-foreground="warning_text">Unsaved changes</badge><button size="sm" variant="outline" on-press="save_goals" disabled="{operationRunning}">Save goals</button><button size="sm" variant="ghost" on-press="discard_goal_edits" disabled="{operationRunning}" label="Discard changes to goals and reload the saved set">Discard changes</button></if>
+              <else><row gap="6" cross="center"><icon name="check-circle" width="14" height="14" foreground="success" label=""/><badge variant="secondary">Saved on this device</badge></row></else>
+            </row>
+            <row gap="8" cross="center" role="group" label="Filter goals by group">
+              <toggle-button size="sm" selected="{goalFilterAll}" on-toggle="filter_goals_all">All {goalCountLabel}</toggle-button>
+              <toggle-button size="sm" selected="{goalFilterBusiness}" on-toggle="filter_goals_business">{businessGoalCountLabel}</toggle-button>
+              <toggle-button size="sm" selected="{goalFilterArchitecture}" on-toggle="filter_goals_architecture">{architectureGoalCountLabel}</toggle-button>
+              <toggle-button size="sm" selected="{goalFilterOperations}" on-toggle="filter_goals_operations">{operationsGoalCountLabel}</toggle-button>
+            </row>
+            <card padding="0">
+              <column gap="0">
+                <for each="goalViews" as="goal">
+                  <column gap="0">
+                    <row padding="16" gap="12" cross="center">
+                      <text size="lg" foreground="text_muted"><span mono="true">{goal.number}</span></text>
+                      <column grow="1" gap="4">
+                        <if test="{goal.editing}"><text-field text="{selectedGoalTitle}" placeholder="Untitled goal" label="Goal title" on-input="goal_title_input" autofocus="{goalTitleFocus}"/></if>
+                        <else><text><span weight="medium">{goal.title}</span></text></else>
+                        <text size="sm" foreground="text_muted" wrap="true">Outcome: {goal.outcome}</text>
+                      </column>
+                      <if test="{not goal.editing}"><button variant="ghost" size="icon" icon="chevron-up" on-press="move_goal_row_up:{goal.index}" disabled="{not goal.can_move_up}" label="{'Move up: ' ++ goal.title}"/></if>
+                      <if test="{not goal.editing}"><button variant="ghost" size="icon" icon="chevron-down" on-press="move_goal_row_down:{goal.index}" disabled="{not goal.can_move_down}" label="{'Move down: ' ++ goal.title}"/></if>
+                      <if test="{goal.editing}"><button variant="ghost" size="sm" on-press="select_goal:{goal.index}" label="Done editing this goal">Done</button></if>
+                      <else><button variant="ghost" size="sm" icon="edit" on-press="select_goal:{goal.index}" label="{'Edit goal: ' ++ goal.title}">Edit</button></else>
+                    </row>
+                    <if test="{goal.editing}">
+                      <column gap="16" padding="16" background="surface_subtle">
+                        <row gap="24" cross="start">
+                          <text width="160" size="sm" foreground="text_muted">Goal group · required</text>
+                          <column grow="1" gap="8" cross="start">
+                            <if test="{selectedGoalIsBusiness}"><button size="sm" variant="primary" on-press="goal_group_business" label="Business and product goal group selected">Business and product</button></if><else><button size="sm" variant="outline" on-press="goal_group_business" label="Set goal group to Business and product">Business and product</button></else>
+                            <if test="{selectedGoalIsArchitecture}"><button size="sm" variant="primary" on-press="goal_group_architecture" label="Architecture and platform goal group selected">Architecture and platform</button></if><else><button size="sm" variant="outline" on-press="goal_group_architecture" label="Set goal group to Architecture and platform">Architecture and platform</button></else>
+                            <if test="{selectedGoalIsOperations}"><button size="sm" variant="primary" on-press="goal_group_operations" label="Operations and reliability goal group selected">Operations and reliability</button></if><else><button size="sm" variant="outline" on-press="goal_group_operations" label="Set goal group to Operations and reliability">Operations and reliability</button></else>
+                          </column>
+                        </row>
+                        <row gap="24" cross="start"><text width="160" size="sm" foreground="text_muted">Desired outcome · required</text><textarea grow="1" text="{selectedGoalOutcome}" placeholder="Describe the result in plain business language." label="Desired outcome" on-input="goal_outcome_input"/></row>
+                        <row gap="24" cross="start"><text width="160" size="sm" foreground="text_muted">Success checks · required</text><column grow="1" gap="4"><textarea text="{selectedGoalChecks}" placeholder="One concrete check per line — each should be verifiable in the code" label="Success checks" on-input="goal_checks_input"/><text size="sm" foreground="text_muted">One check per line.</text></column></row>
+                        <row main="end" gap="8">
+                          <button size="sm" variant="outline" on-press="move_goal_up" disabled="{not canMoveGoalUp}">Move up</button>
+                          <button size="sm" variant="outline" on-press="move_goal_down" disabled="{not canMoveGoalDown}">Move down</button>
+                          <if test="{not canDeleteGoal}"><text size="sm" foreground="text_muted">Keep at least one goal.</text></if>
+                          <button size="sm" variant="destructive" on-press="delete_goal" disabled="{not canDeleteGoal}">Delete</button>
+                        </row>
+                      </column>
+                    </if>
+                    <separator/>
+                  </column>
+                </for>
+                <row padding="12" gap="12" cross="center">
+                  <button variant="ghost" size="sm" icon="plus" on-press="add_goal" disabled="{operationRunning}">Add goal</button>
+                  <if test="{canUndoDelete}"><button variant="outline" size="sm" on-press="undo_delete">Undo delete</button></if>
+                </row>
+              </column>
+            </card>
+
+            <row gap="12" cross="center">
+              <spacer grow="1"/>
+              <column gap="4" cross="end">
+                <if test="{goalsNeedCompletion}"><text size="sm" wrap="true">{incompleteGoalHint}</text></if>
+                <else><if test="{providerMissingForAnalysis}"><text size="sm">Install or select an AI provider to analyze.</text></if>
+                <else><if test="{goalsDirty}"><text size="sm" foreground="text_muted">Analyze saves these changes and creates the next report.</text></if></else></else>
+                <button variant="primary" on-press="analyze" disabled="{not canAnalyze}">Analyze repository</button>
+              </column>
+            </row>
+          </if>
+          <else>
+            <card padding="24">
+              <column gap="12" cross="center" padding="24">
+                <text size="heading">No goals yet</text>
+                <text foreground="text_muted" wrap="true">Generate 6–9 editable goals grounded in your notes and attached product materials, or add the first goal yourself.</text>
+                <row gap="12"><button variant="primary" on-press="generate_goals" disabled="{operationRunning}">Generate goals with AI</button><button variant="outline" on-press="add_goal" disabled="{operationRunning}">Add a goal</button></row>
+              </column>
+            </card>
+          </else>
+        </column>
+        </row>
+      </if>
+
+      <if test="{isReport}">
+        <row main="center">
+        <column width="{reportContentWidth}" gap="24">
+          <card padding="12">
+            <row gap="12" cross="center">
+              <icon name="check-circle" width="18" height="18" foreground="success" label=""/>
+              <column grow="1" gap="2">
+                <text><span weight="medium">Analysis finished</span></text>
+                <text size="sm" foreground="text_muted" wrap="true">Overall support: {overallCategory}. {improvementLabel}</text>
+                <if test="{goalsDirty}"><text size="sm" foreground="text_muted">Analyze again saves your goal edits first.</text></if>
+              </column>
+              <if test="{latestAnalysisFromAgent}"><badge variant="secondary" foreground="text_muted">Agent session · validated locally</badge></if>
+              <button variant="outline" size="sm" on-press="open_architecture" label="Open the architecture map">Architecture map</button>
+              <button variant="primary" size="sm" on-press="analyze" disabled="{not canAnalyze}">Analyze again</button>
+              <if test="{reportExporting}"><button variant="outline" size="sm" disabled="true">Preparing Word report...</button></if>
+              <else><button variant="outline" size="sm" icon="download" on-press="download_report">Download Word report</button></else>
+              <if test="{hasExportedReport}"><button variant="ghost" size="sm" on-press="reveal_report">Show in folder</button></if>
+            </row>
+          </card>
+
+          <row gap="8" cross="center" role="group" label="Report sections">
+            <text size="sm" foreground="text_muted">Show</text>
+            <if test="{analysisFocus}"><toggle-button size="sm" selected="{showSummarySection}" on-toggle="report_summary" autofocus="true">All sections</toggle-button></if><else><toggle-button size="sm" selected="{showSummarySection}" on-toggle="report_summary">All sections</toggle-button></else>
+            <if test="{hasArchitectureDecisions}"><toggle-button size="sm" selected="{architectureSectionSelected}" on-toggle="report_architecture">Architecture findings</toggle-button></if>
+            <if test="{hasRecommendationDecisions}"><toggle-button size="sm" selected="{actionsSectionSelected}" on-toggle="report_actions">Recommendations</toggle-button></if>
+            <toggle-button size="sm" selected="{goalDetailsSectionSelected}" on-toggle="report_goal_details">Goal details</toggle-button>
+          </row>
+
+          <if test="{showSummarySection}">
+          <column gap="4">
+            <text size="sm" foreground="text_muted"><span mono="true">ANALYSIS SUMMARY</span></text>
+            <text size="heading">Progress over time</text>
+            <text foreground="text_muted" wrap="true">Each analysis classifies how fully the repository supports each goal.</text>
+          </column>
+          </if>
+
+          <if test="{hasNotice}"><alert variant="secondary" text="Report"><text wrap="true">{noticeMessage}</text></alert></if>
+          <if test="{hasError}"><alert variant="destructive" text="Report unavailable"><text wrap="true">{errorMessage}</text></alert></if>
+          <if test="{hasAnalysisWarning}"><alert variant="secondary" text="Report completed with notes"><text wrap="true">{analysisWarning}</text></alert></if>
+
+          <if test="{hasAnalysis}">
+            <if test="{showSummarySection}">
+            <row gap="16" cross="stretch">
+              <card grow="1" padding="16">
+                <column gap="8">
+                  <text size="sm" foreground="text_muted"><span mono="true">OVERALL</span></text>
+                  <if test="{overallIsNotAssessed}"><text size="display" foreground="text_muted">{overallCategory}</text></if>
+                  <else><text size="display">{overallCategory}</text></else>
+                  <use template="level-swatch" is_na="{overallIsNotAssessed}" is_missing="{overallIsMissing}" is_broken="{overallIsBroken}" is_incomplete="{overallIsIncomplete}" is_functional="{overallIsFunctional}" is_strong="{overallIsStrong}"/>
+                  <text size="sm" foreground="text_muted" wrap="true">Median across your goals: at least half are at this level or better.</text>
+                </column>
+              </card>
+              <card grow="1" padding="16">
+                <column gap="8">
+                  <text size="sm" foreground="text_muted"><span mono="true">IMPROVEMENT</span></text>
+                  <row gap="6" cross="start"><if test="{improvementPositive}"><icon name="arrow-up" width="16" height="16" foreground="success" label=""/></if><text grow="1" wrap="true">{improvementLabel}</text></row>
+                  <text size="sm" foreground="text_muted" wrap="true">Change in overall support since the previous analysis.</text>
+                </column>
+              </card>
+              <card grow="1" padding="16">
+                <column gap="8">
+                  <text size="sm" foreground="text_muted"><span mono="true">TREND</span></text>
+                  <if test="{hasTrend}"><chart width="200" height="44" y-min="0" y-max="4" label="Median status trend"><series kind="line" values="{medianTrend}" color="accent" label="median status"/></chart></if>
+                  <else><text size="sm" foreground="text_muted" wrap="true">The trend line starts with the second analysis.</text></else>
+                  <text size="sm" foreground="text_muted" wrap="true">Scale: 0 = Missing to 4 = Strong. {historyNote}</text>
+                </column>
+              </card>
+              <if test="{hasCoverage}">
+                <card grow="1" padding="16">
+                  <column gap="8">
+                    <text size="sm" foreground="text_muted"><span mono="true">COVERAGE</span></text>
+                    <text size="display">{coverageLabel}</text>
+                    <text size="sm" foreground="text_muted" wrap="true">The share of success checks the analysis could assess, weighted by goal priority. Unverified checks lower it.</text>
+                  </column>
+                </card>
+              </if>
+            </row>
+            <if test="{hasProvenance}"><column gap="4"><row gap="8" cross="center"><text size="sm" foreground="text_muted">Latest analysis of exactly this code:</text><if test="{hasUnverifiedChecks}"><badge accent="warning" accent-foreground="warning_text">{unverifiedChecksLabel}</badge></if></row><text size="sm" foreground="text_muted"><span mono="true">{provenanceLabel}</span></text></column></if>
+
+            <if test="{hasDecisionFunnel}">
+              <card padding="16">
+                <column gap="8">
+                  <text size="sm" foreground="text_muted"><span mono="true">LOCAL DECISION FUNNEL</span></text>
+                  <row gap="16" cross="start">
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">TIME TO FIRST REPORT</text><text wrap="true">{firstReportTimeLabel}</text></column>
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">REPEAT REVIEW</text><text wrap="true">{repeatReviewLabel}</text></column>
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">DECISION CYCLE</text><text wrap="true">{decisionCycleLabel}</text></column>
+                  </row>
+                  <text size="sm" foreground="text_muted" wrap="true">{decisionFunnelCountsLabel}</text>
+                  <text size="sm" foreground="text_muted" wrap="true">Derived from signed event timestamps on this device. CodeCaddie records no source, attachment contents, or goal text in these markers and sends nothing externally.</text>
+                </column>
+              </card>
+            </if>
+
+            <if test="{hasReliabilitySummary}">
+              <card padding="16">
+                <column gap="8">
+                  <text size="sm" foreground="text_muted"><span mono="true">LOCAL RELIABILITY</span></text>
+                  <row gap="16" cross="start">
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">AVAILABILITY</text><text wrap="true">{reliabilityAvailabilityLabel}</text></column>
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">CRASH-FREE SESSIONS</text><text wrap="true">{reliabilityCrashFreeLabel}</text></column>
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">CORE LATENCY</text><text wrap="true">{reliabilityLatencyLabel}</text></column>
+                  </row>
+                  <text size="sm" foreground="text_muted" wrap="true">{reliabilityCountsLabel}</text>
+                  <text size="sm" foreground="text_muted" wrap="true">Native crash markers and provider-bridge failures are measured in signed local records. They contain allowlisted operation and error codes, correlation IDs, version, platform, and timing — never repository source, prompts, attachments, goals, or free-form error text.</text>
+                </column>
+              </card>
+            </if>
+
+            <card padding="16">
+              <column gap="10">
+                <row gap="8" main="end" cross="center"><if test="{historyLoading}"><progress width="96" label="Loading saved analyses"/></if><text size="sm" foreground="text_muted"><span mono="true">{historyStatusLabel}</span></text></row>
+                <row gap="8" cross="start" role="grid" label="Goal progress by analysis run">
+                  <column width="{heatmapGoalWidth}" gap="0">
+                    <row height="60" cross="end" role="row"><text size="sm" foreground="text_muted">Goal</text></row>
+                    <separator/>
+                    <for each="heatmapRows" as="goal">
+                      <row width="{heatmapGoalWidth}" height="{goal.height}" gap="8" cross="center" padding="4" role="row" on-hover-enter="hover_goal:{goal.goal_index}" on-hover-leave="leave_goal:{goal.goal_index}">
+                        <text grow="1" height="{goal.title_height}" wrap="true">{goal.title}</text>
+                        <if test="{goal.hovered}"><button size="sm" variant="ghost" icon="edit" label="{goal.edit_label}" on-press="edit_heatmap_goal:{goal.goal_index}">Edit</button></if>
+                        <else><button size="sm" variant="ghost" icon="edit" label="{goal.edit_label}" on-press="edit_heatmap_goal:{goal.goal_index}"/></else>
+                      </row>
+                    </for>
+                  </column>
+                  <scroll width="{heatmapScrollWidth}" height="{heatmapTableHeight}" axis="horizontal" value-x="{historyScrollOffset}" on-scroll="history_scrolled">
+                    <column width="{historyTrackWidth}" gap="0">
+                      <row width="{historyTrackWidth}" height="60" cross="end" role="row">
+                        <row width="{historyLeadingSpace}" height="60"/>
+                        <for each="heatmapAnalyses" as="analysis">
+                          <column width="{historyColumnStride}" height="60" on-hover-enter="hover_history_analysis:{analysis.analysis_index}" on-hover-leave="leave_history_analysis:{analysis.analysis_index}">
+                            <column width="{heatmapCellWidth}" gap="3" role="gridcell" label="{analysis.label}">
+                              <row width="{heatmapCellWidth}" cross="center"><text grow="1" size="sm" foreground="text_muted" text-alignment="center"><span mono="true">{analysis.label}</span></text><if test="{analysis.deletable}"><if test="{analysis.hovered}"><button variant="destructive" size="icon" icon="x" label="{analysis.delete_label}" on-press="request_delete_history:{analysis.analysis_index}"/></if><else><button variant="ghost" size="icon" icon="x" label="{analysis.delete_label}" on-press="request_delete_history:{analysis.analysis_index}"/></else></if></row>
+                              <if test="{analysis.latest}"><text size="sm" foreground="accent" text-alignment="center"><span mono="true">LATEST</span></text><row width="{heatmapCellWidth}" height="2" background="accent"/></if>
+                            </column>
+                          </column>
+                        </for>
+                        <row width="{historyTrailingSpace}" height="60"/>
+                      </row>
+                      <separator width="{historyTrackWidth}"/>
+                      <for each="heatmapRows" as="goal">
+                        <row width="{historyTrackWidth}" height="{goal.height}" cross="center" role="row">
+                          <row width="{historyLeadingSpace}" height="{goal.height}"/>
+                          <if test="{goal.c1_visible}"><column width="{historyColumnStride}"><use template="heatmap-cell" visible="{goal.c1_visible}" label="{goal.c1_label}" accessible="{goal.c1_accessible_label}" finding="{goal.c1_finding_key}" return_focus="{goal.c1_return_focus}" cell_width="{heatmapCellWidth}" is_na="{goal.c1_is_na}" is_missing="{goal.c1_is_missing}" is_broken="{goal.c1_is_broken}" is_incomplete="{goal.c1_is_incomplete}" is_functional="{goal.c1_is_functional}" is_strong="{goal.c1_is_strong}"/></column></if>
+                          <if test="{goal.c2_visible}"><column width="{historyColumnStride}"><use template="heatmap-cell" visible="{goal.c2_visible}" label="{goal.c2_label}" accessible="{goal.c2_accessible_label}" finding="{goal.c2_finding_key}" return_focus="{goal.c2_return_focus}" cell_width="{heatmapCellWidth}" is_na="{goal.c2_is_na}" is_missing="{goal.c2_is_missing}" is_broken="{goal.c2_is_broken}" is_incomplete="{goal.c2_is_incomplete}" is_functional="{goal.c2_is_functional}" is_strong="{goal.c2_is_strong}"/></column></if>
+                          <if test="{goal.c3_visible}"><column width="{historyColumnStride}"><use template="heatmap-cell" visible="{goal.c3_visible}" label="{goal.c3_label}" accessible="{goal.c3_accessible_label}" finding="{goal.c3_finding_key}" return_focus="{goal.c3_return_focus}" cell_width="{heatmapCellWidth}" is_na="{goal.c3_is_na}" is_missing="{goal.c3_is_missing}" is_broken="{goal.c3_is_broken}" is_incomplete="{goal.c3_is_incomplete}" is_functional="{goal.c3_is_functional}" is_strong="{goal.c3_is_strong}"/></column></if>
+                          <if test="{goal.c4_visible}"><column width="{historyColumnStride}"><use template="heatmap-cell" visible="{goal.c4_visible}" label="{goal.c4_label}" accessible="{goal.c4_accessible_label}" finding="{goal.c4_finding_key}" return_focus="{goal.c4_return_focus}" cell_width="{heatmapCellWidth}" is_na="{goal.c4_is_na}" is_missing="{goal.c4_is_missing}" is_broken="{goal.c4_is_broken}" is_incomplete="{goal.c4_is_incomplete}" is_functional="{goal.c4_is_functional}" is_strong="{goal.c4_is_strong}"/></column></if>
+                          <if test="{goal.c5_visible}"><column width="{historyColumnStride}"><use template="heatmap-cell" visible="{goal.c5_visible}" label="{goal.c5_label}" accessible="{goal.c5_accessible_label}" finding="{goal.c5_finding_key}" return_focus="{goal.c5_return_focus}" cell_width="{heatmapCellWidth}" is_na="{goal.c5_is_na}" is_missing="{goal.c5_is_missing}" is_broken="{goal.c5_is_broken}" is_incomplete="{goal.c5_is_incomplete}" is_functional="{goal.c5_is_functional}" is_strong="{goal.c5_is_strong}"/></column></if>
+                          <row width="{historyTrailingSpace}" height="{goal.height}"/>
+                        </row>
+                      </for>
+                    </column>
+                  </scroll>
+                </row>
+              </column>
+            </card>
+            <if test="{hasHoveredGoalSummary}"><row padding="8" gap="8" background="surface_subtle" radius="md"><text size="sm" wrap="true" foreground="text_muted">{hoveredGoalSummary}</text></row></if>
+            <row gap="12" main="end" cross="center" role="group" label="Status legend">
+              <row gap="4" cross="center"><row width="12" height="12" radius="sm" background="destructive"/><text size="sm">Missing</text></row>
+              <row gap="4" cross="center"><row width="12" height="12" radius="sm" background="syntax_keyword"/><text size="sm">Broken</text></row>
+              <row gap="4" cross="center"><row width="12" height="12" radius="sm" background="syntax_constant"/><text size="sm">Incomplete</text></row>
+              <row gap="4" cross="center"><row width="12" height="12" radius="sm" background="syntax_literal"/><text size="sm">Functional</text></row>
+              <row gap="4" cross="center"><row width="12" height="12" radius="sm" background="success"/><text size="sm">Strong</text></row>
+              <row gap="4" cross="center"><row width="12" height="12" radius="sm" background="text_muted"/><text size="sm">N/A</text></row>
+            </row>
+            <text size="sm" foreground="text_muted" wrap="true">Missing: absent · Broken: present but unusable · Incomplete: partly supported · Functional: works for the goal · Strong: complete and well supported · N/A: goal did not exist yet. Select any cell to open its finding details.</text>
+            </if>
+
+            <if test="{hasArchitectureDecisions}">
+              <if test="{showArchitectureSection}">
+              <separator/>
+              <column gap="12" role="group" label="Architecture findings section">
+                <column gap="4">
+                  <text size="sm" foreground="text_muted"><span mono="true">ARCHITECTURE FINDINGS</span></text>
+                  <row gap="12" cross="center"><text grow="1" size="heading" wrap="true">How the system supports the goals</text><button size="sm" variant="ghost" on-press="open_architecture" label="Open the full architecture map">Architecture map</button><if test="{architectureSectionFocus}"><button size="sm" variant="ghost" on-press="report_summary" autofocus="true" label="Show all sections instead of only architecture findings">Show all sections</button></if><else><button size="sm" variant="ghost" on-press="report_summary" label="Show all sections instead of only architecture findings">Show all sections</button></else></row>
+                  <text foreground="text_muted" wrap="true">Evidence-backed components and relationships from the latest analysis.</text>
+                </column>
+                <column gap="12" role="list" label="Latest architecture findings">
+                  <for each="architectureDecisionViews" as="claim">
+                    <card padding="16" role="listitem" label="{claim.component}">
+                      <column gap="8">
+                        <row gap="12" cross="center"><text grow="1"><span weight="medium">{claim.component}</span></text><badge variant="secondary">{claim.evidence_label}</badge></row>
+                        <text wrap="true">{claim.summary}</text>
+                        <if test="{claim.has_relationship}"><text size="sm" wrap="true" foreground="text_muted">{claim.relationship}</text></if>
+                        <if test="{claim.has_goals}"><text size="sm" wrap="true" foreground="text_muted">Supports: {claim.goal_titles}</text></if>
+                      </column>
+                    </card>
+                  </for>
+                </column>
+              </column>
+              </if>
+            </if>
+            <if test="{hasRecommendationDecisions}">
+              <if test="{showActionsSection}">
+              <separator/>
+              <column gap="12" role="group" label="Recommendations section">
+                <column gap="4">
+                  <text size="sm" foreground="text_muted"><span mono="true">RECOMMENDATIONS</span></text>
+                  <row gap="12" cross="center"><text grow="1" size="heading" wrap="true">What to do next</text><if test="{actionsSectionFocus}"><button size="sm" variant="ghost" on-press="report_summary" autofocus="true" label="Show all sections instead of only recommendations">Show all sections</button></if><else><button size="sm" variant="ghost" on-press="report_summary" label="Show all sections instead of only recommendations">Show all sections</button></else></row>
+                  <text foreground="text_muted" wrap="true">Ranked, evidence-grounded improvements. Choose whether to fix the implementation, revise the goal contract, or audit the analysis.</text>
+                  <if test="{recommendationSelectionMode}">
+                    <row gap="8" cross="center" role="group" label="Recommendation selection controls">
+                      <toggle-button size="sm" selected="{allRecommendationsSelected}" on-toggle="select_all_recommendations">Select all</toggle-button>
+                      <text size="sm" foreground="text_muted">{selectedRecommendationCountLabel}</text>
+                      <spacer grow="1"/>
+                      <button size="sm" variant="ghost" on-press="cancel_recommendation_selection">Cancel selection</button>
+                      <button size="sm" variant="primary" on-press="create_recommendation_bundle" disabled="{not canCreateRecommendationBundle}">Choose a path</button>
+                    </row>
+                  </if>
+                  <else><row><button size="sm" variant="outline" icon="check" on-press="enter_recommendation_selection" autofocus="{recommendationReturnFocus}">Select recommendations</button></row></else>
+                </column>
+                <column gap="12" role="list" label="Latest recommendations">
+                  <for each="recommendationDecisionViews" as="recommendation">
+                    <card padding="16" role="listitem" label="{recommendation.title}">
+                      <column gap="8">
+                        <row gap="12" cross="center"><badge>{recommendation.rank_label}</badge><text grow="1"><span weight="medium">{recommendation.title}</span></text><badge variant="secondary">{recommendation.evidence_label}</badge><if test="{recommendationSelectionMode}"><toggle-button size="sm" selected="{recommendation.selected}" on-toggle="toggle_recommendation:{recommendation.index}" label="{'Select ' ++ recommendation.title}">Select</toggle-button></if></row>
+                        <text wrap="true">{recommendation.expected_impact}</text>
+                        <text size="sm" wrap="true" foreground="text_muted">{recommendation.rationale}</text>
+                        <if test="{not recommendationSelectionMode}"><row main="end"><button size="sm" variant="outline" on-press="create_recommendation_prompt:{recommendation.index}">Choose a fix</button></row></if>
+                      </column>
+                    </card>
+                  </for>
+                </column>
+              </column>
+              </if>
+            </if>
+            <if test="{showGoalDetailsSection}">
+            <separator/>
+            <column gap="12" role="group" label="Goal details section">
+              <column gap="4">
+                <text size="sm" foreground="text_muted"><span mono="true">GOAL-BY-GOAL</span></text>
+                <row gap="12" cross="center"><text grow="1" size="heading" wrap="true">Goal details</text><if test="{goalDetailsSectionFocus}"><button size="sm" variant="ghost" on-press="report_summary" autofocus="true" label="Show all sections instead of only goal details">Show all sections</button></if><else><button size="sm" variant="ghost" on-press="report_summary" label="Show all sections instead of only goal details">Show all sections</button></else></row>
+                <text foreground="text_muted">Recommendations and repository references for each goal.</text>
+              </column>
+              <card padding="0">
+                <column gap="0">
+                  <for each="goalDetailViews" as="detail">
+                    <if test="{not detail.first}"><separator/></if>
+                    <column padding="16" gap="8"><row cross="center" gap="12"><text grow="1"><span weight="medium">{detail.title}</span></text><badge variant="secondary">{detail.level}</badge></row><text size="sm" wrap="true" foreground="text_muted">{detail.summary}</text><row><button size="sm" variant="ghost" on-press="open_finding:{detail.finding_key}">View finding details</button></row></column>
+                  </for>
+                </column>
+              </card>
+            </column>
+            </if>
+          </if>
+          <else>
+            <card padding="24">
+              <column gap="12" cross="center" padding="24">
+                <text size="heading">No completed analysis yet</text>
+                <button variant="primary" on-press="show_goals">Review goals</button>
+              </column>
+            </card>
+          </else>
+        </column>
+        </row>
+      </if>
+    </column>
+  </scroll>
+  </column>
+  </if>
+
+  <if test="{recommendationPromptOpen}">
+    <column grow="1" background="background">
+      <row padding="12" gap="12" cross="center" background="surface">
+        <image image="{brandImage}" width="24" height="24" label="CodeCaddie icon"/>
+        <text><span mono="true">codecaddie</span></text>
+        <text foreground="text_muted">/</text>
+        <breadcrumb label="Report location"><text size="sm" foreground="text_muted">Report</text><text size="sm" foreground="text_muted">›</text><text size="sm">Action prompt</text></breadcrumb>
+        <spacer grow="1"/>
+        <button variant="outline" size="sm" icon="chevron-left" on-press="close_recommendation_prompt" disabled="{recommendationPromptLoading or recommendationPromptCopying}">Back to report</button>
+      </row>
+      <separator/>
+      <if test="{recommendationPromptLoading}"><column grow="1" main="center" cross="center" gap="12"><progress width="180" label="Creating action prompt"/><text foreground="text_muted">Grounding the prompt in the latest saved report and current checkout…</text></column></if>
+      <else>
+        <scroll grow="1">
+          <row main="center" padding="24"><column width="{recommendationPromptWidth}" gap="20">
+            <column gap="4"><text size="sm" foreground="text_muted"><span mono="true">{recommendationPromptKicker}</span></text><text size="heading" wrap="true">{recommendationPromptHeading}</text><text foreground="text_muted" wrap="true">{recommendationPromptHelp}</text></column>
+            <card padding="16"><column gap="8"><text size="sm" foreground="text_muted"><span mono="true">SELECTED SCOPE</span></text><text wrap="true">{recommendationPromptScope}</text><text size="sm" foreground="text_muted"><span mono="true">{recommendationPromptProvenance}</span></text></column></card>
+            <if test="{recommendationPromptHasWarning}"><alert variant="secondary" text="Repository changed since this analysis"><text wrap="true">{recommendationPromptWarning}</text></alert></if>
+            <textarea height="480" text="{recommendationPromptText}" label="Editable action prompt" on-input="recommendation_prompt_input" autofocus="{recommendationPromptFocus}"/>
+            <if test="{recommendationPromptHasFeedback}"><alert variant="secondary" text="Action prompt"><text wrap="true">{recommendationPromptFeedback}</text></alert></if>
+            <row gap="8" cross="center"><button variant="outline" on-press="reset_recommendation_prompt" disabled="{not recommendationPromptEdited or recommendationPromptCopying}">Reset generated prompt</button><spacer grow="1"/><if test="{recommendationPromptCopying}"><button variant="primary" disabled="true">Copying…</button></if><else><button variant="primary" icon="copy" on-press="copy_recommendation_prompt">Copy prompt</button></else></row>
+          </column></row>
+        </scroll>
+      </else>
+    </column>
+  </if>
+
+  <if test="{findingOpen}">
+    <column grow="1" background="background">
+      <row padding="12" gap="12" cross="center" background="surface">
+        <image image="{brandImage}" width="24" height="24" label="CodeCaddie icon"/>
+        <text><span mono="true">codecaddie</span></text>
+        <text foreground="text_muted">/</text>
+        <breadcrumb label="Report location">
+          <text size="sm" foreground="text_muted">Report</text>
+          <text size="sm" foreground="text_muted">›</text>
+          <text size="sm">Finding details</text>
+        </breadcrumb>
+        <spacer grow="1"/>
+        <if test="{operationRunning}"><badge>Analysis running</badge></if>
+        <text size="sm" foreground="text_muted">Analysis from {findingDate}</text>
+        <text size="sm" foreground="text_muted">{findingPositionLabel}</text>
+        <button variant="ghost" size="icon" icon="chevron-up" on-press="finding_previous_goal" disabled="{not findingHasPreviousGoal}" label="Previous goal"/>
+        <button variant="ghost" size="icon" icon="chevron-down" on-press="finding_next_goal" disabled="{not findingHasNextGoal}" label="Next goal"/>
+        <button variant="outline" size="sm" icon="chevron-left" on-press="close_finding" autofocus="true">Back to report</button>
+      </row>
+      <separator/>
+      <scroll grow="1" value="{findingScrollOffset}" on-scroll="finding_scrolled">
+        <row main="center" padding="24">
+          <column width="880" gap="24">
+            <if test="{findingLoading}"><alert text="Loading saved finding"><text wrap="true">CodeCaddie is loading this run's criteria and immutable evidence from local encrypted history.</text></alert></if>
+            <if test="{findingLoadFailed}"><alert variant="destructive" text="Saved finding unavailable"><text wrap="true">{findingLoadError}</text></alert></if>
+            <column gap="4">
+              <text size="sm" foreground="text_muted"><span mono="true">ANALYSIS DETAIL</span></text>
+              <text size="display" wrap="true">{findingSummary}</text>
+            </column>
+            <row gap="12" cross="center">
+              <text grow="1" wrap="true" foreground="text_muted">{findingGoal}</text>
+              <use template="level-swatch" is_na="{findingIsNA}" is_missing="{findingIsMissing}" is_broken="{findingIsBroken}" is_incomplete="{findingIsIncomplete}" is_functional="{findingIsFunctional}" is_strong="{findingIsStrong}"/><badge variant="secondary">{findingLevel}</badge>
+            </row>
+            <separator/>
+            <column gap="8"><text size="sm" foreground="text_muted"><span mono="true">WHAT CHANGED</span></text><text wrap="true">{findingChange}</text></column>
+            <if test="{findingHasArchitecture}">
+              <separator/>
+              <column gap="12" role="group" label="Architecture support for this goal">
+                <column gap="4">
+                  <row gap="12" cross="center"><text grow="1" size="sm" foreground="text_muted"><span mono="true">ARCHITECTURE SUPPORT</span></text><button size="sm" variant="ghost" on-press="close_finding_open_architecture" label="Open the full architecture map">Architecture map</button></row>
+                  <text foreground="text_muted" wrap="true">How the codebase architecture supports this goal, with verified references.</text>
+                </column>
+                <column gap="12">
+                  <if test="{findingHasArchitectureNarrative}"><text wrap="true">{findingArchitectureNarrative}</text></if>
+                </column>
+                <for each="findingArchitectureClaims" as="claim">
+                  <card padding="16" role="listitem" label="{claim.component}">
+                    <column gap="12">
+                      <row gap="12" cross="center"><text grow="1"><span weight="medium">{claim.component}</span></text><badge variant="secondary">{claim.evidence_label}</badge></row>
+                      <text wrap="true">{claim.summary}</text>
+                      <if test="{claim.has_relationship}"><text size="sm" wrap="true" foreground="text_muted">{claim.relationship}</text></if>
+                      <if test="{claim.has_evidence}">
+                        <column gap="0" background="surface_subtle" radius="md">
+                          <row padding="12" gap="8" cross="center">
+                            
+                            <text grow="1" size="sm"><span mono="true">{claim.coordinate}</span></text>
+                            <badge variant="secondary" foreground="text_muted">{claim.kind_label}</badge>
+                            <if test="{claim.snippet_idle}"><button size="sm" variant="ghost" on-press="view_arch_evidence:{claim.load_key}" label="View snippet of this claim's evidence">View snippet</button></if>
+                          </row>
+                          <if test="{claim.snippet_loading}"><row padding="12" gap="10" cross="center"><progress width="120" label="Loading source snippet"/><text size="sm" wrap="true" foreground="text_muted">{claim.snippet_state}</text></row></if>
+                          <if test="{claim.snippet_ready}">
+                            <column gap="0">
+                              <code source="{claim.snippet}" language="plain" editable="false" line-numbers="true" label="Verified source snippet"/>
+                              <text padding="10" size="sm" foreground="text_muted">{claim.snippet_state} Up to two architecture snippets stay open; opening a third replaces the one viewed least recently.</text>
+                            </column>
+                          </if>
+                          <if test="{claim.snippet_error}"><column gap="8"><alert variant="destructive" text="Snippet unavailable"><text wrap="true">{claim.snippet_state}</text></alert><row><button size="sm" variant="ghost" on-press="view_arch_evidence:{claim.load_key}" label="Retry snippet loading">Retry snippet</button></row></column></if>
+                        </column>
+                      </if>
+                    </column>
+                  </card>
+                </for>
+                <if test="{hasArchitectureEvidenceRows}"><text size="sm" foreground="text_muted"><span mono="true">MORE ARCHITECTURE EVIDENCE</span></text></if>
+                <for each="findingArchitectureEvidence" as="evidence">
+                  <row padding="12" gap="10" cross="center" background="surface_subtle" radius="md">
+                    <column grow="1" gap="2"><text size="sm" wrap="true">{evidence.component}</text><text size="sm" foreground="text_muted"><span mono="true">{evidence.coordinate}</span></text></column>
+                    <badge variant="secondary" foreground="text_muted">{evidence.kind_label}</badge>
+                    <if test="{evidence.selected}"><button size="sm" variant="outline" disabled="true" label="Viewing this evidence now">Viewing</button></if>
+                    <else><button size="sm" variant="ghost" on-press="view_arch_evidence:{evidence.view_key}" label="View snippet of this evidence">View snippet</button></else>
+                  </row>
+                </for>
+              </column>
+            </if>
+            <if test="{findingHasCriteria}">
+              <separator/>
+              <column gap="12">
+                <text size="sm" foreground="text_muted"><span mono="true">SUCCESS CHECK RESULTS</span></text>
+                <text size="sm" foreground="text_muted" wrap="true">Found: the cited code proves the check · Partly found: the evidence supports part of the check · Evidence shows a gap: contrary evidence was found · Could not find evidence: nothing relevant turned up · Could not verify: the citation could not be validated on this device · Confidence is the analyzer's certainty in that verdict.</text>
+                <for each="findingCriteria" as="criterion">
+                  <card padding="16">
+                    <column gap="12">
+                      <row gap="12" cross="start"><if test="{criterion.verdict_found}"><badge accent="success" accent-foreground="success_text">{criterion.result}</badge></if><else><if test="{criterion.verdict_partial}"><badge accent="warning" accent-foreground="warning_text">{criterion.result}</badge></if><else><if test="{criterion.verdict_gap}"><badge accent="destructive" accent-foreground="destructive_text">{criterion.result}</badge></if><else><badge variant="secondary">{criterion.result}</badge></else></else></else><text grow="1"><span weight="medium">{criterion.text}</span></text><if test="{criterion.show_confidence}"><badge accent="warning" accent-foreground="warning_text">{criterion.confidence_label}</badge></if></row>
+                      <text size="sm" wrap="true" foreground="text_muted">{criterion.rationale}</text>
+                      <if test="{criterion.has_change}"><row gap="8" cross="start"><badge variant="secondary">Since prior</badge><text size="sm" wrap="true" foreground="text_muted">{criterion.change}</text></row></if>
+                      <if test="{criterion.has_evidence}">
+                        <column gap="0" background="surface_subtle" radius="md">
+                          <row padding="12" gap="8" cross="center"><text grow="1" size="sm"><span mono="true">{criterion.coordinate}</span></text><badge variant="secondary" foreground="text_muted">{criterion.kind_label}</badge></row>
+                          <if test="{criterion.snippet_loading}"><row padding="12" gap="10" cross="center"><progress width="120" label="Loading source snippet"/><text size="sm" wrap="true" foreground="text_muted">{criterion.snippet_state}</text></row></if>
+                          <if test="{criterion.snippet_ready}">
+                            <column gap="0">
+                              <if test="{criterion.language_zig}"><code source="{criterion.snippet}" language="zig" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_rust}"><code source="{criterion.snippet}" language="rust" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_ts}"><code source="{criterion.snippet}" language="ts" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_tsx}"><code source="{criterion.snippet}" language="tsx" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_js}"><code source="{criterion.snippet}" language="js" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_jsx}"><code source="{criterion.snippet}" language="jsx" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_json}"><code source="{criterion.snippet}" language="json" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_yaml}"><code source="{criterion.snippet}" language="yaml" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_shell}"><code source="{criterion.snippet}" language="shell" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_python}"><code source="{criterion.snippet}" language="python" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_c}"><code source="{criterion.snippet}" language="c" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_cpp}"><code source="{criterion.snippet}" language="cpp" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_csharp}"><code source="{criterion.snippet}" language="csharp" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_java}"><code source="{criterion.snippet}" language="java" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_kotlin}"><code source="{criterion.snippet}" language="kotlin" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_swift}"><code source="{criterion.snippet}" language="swift" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_go}"><code source="{criterion.snippet}" language="go" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_html}"><code source="{criterion.snippet}" language="html" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_css}"><code source="{criterion.snippet}" language="css" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_sql}"><code source="{criterion.snippet}" language="sql" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_markdown}"><code source="{criterion.snippet}" language="markdown" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <if test="{criterion.language_plain}"><code source="{criterion.snippet}" language="plain" editable="false" line-numbers="true" label="Verified source snippet"/></if>
+                              <text padding="10" size="sm" foreground="text_muted">{criterion.snippet_state}</text>
+                            </column>
+                          </if>
+                          <if test="{criterion.snippet_error}"><column gap="8"><alert variant="destructive" text="Snippet unavailable"><text wrap="true">{criterion.snippet_state}</text></alert><row><button size="sm" variant="ghost" on-press="view_evidence:{criterion.retry_key}" label="Retry snippet loading">Retry snippet</button></row></column></if>
+                        </column>
+                        <if test="{criterion.has_more}"><row><button size="sm" variant="ghost" on-press="toggle_evidence:{criterion.index}">{criterion.more_label}</button></row></if>
+                      </if>
+                      <else><alert variant="secondary" text="No validated source reference"><text wrap="true">{criterion.snippet_state}</text></alert></else>
+                    </column>
+                  </card>
+                </for>
+                <if test="{hasExpandedEvidence}"><column gap="2"><text size="sm" foreground="text_muted"><span mono="true">ADDITIONAL EVIDENCE</span></text><text size="sm" foreground="text_muted" wrap="true">Every citation from the criteria expanded above; each row names its criterion.</text></column></if>
+                <for each="findingAdditionalEvidence" as="evidence">
+                  <row padding="12" gap="10" cross="center" background="surface_subtle" radius="md">
+                    <column grow="1" gap="2"><text size="sm" wrap="true">{evidence.criterion}</text><text size="sm" foreground="text_muted"><span mono="true">{evidence.coordinate}</span></text></column>
+                    <if test="{evidence.selected}"><button size="sm" variant="outline" disabled="true" label="Viewing this evidence now">Viewing</button></if>
+                    <else><button size="sm" variant="ghost" on-press="view_evidence:{evidence.view_key}" label="View snippet of this evidence">View snippet</button></else>
+                  </row>
+                </for>
+              </column>
+            </if>
+            <else><column gap="8"><text size="sm" foreground="text_muted"><span mono="true">ASSESSMENT NOTES</span></text><text wrap="true" foreground="text_muted">{findingRationale}</text></column></else>
+          </column>
+        </row>
+      </scroll>
+    </column>
+  </if>
+
+  <if test="{architectureOpen}">
+    <column grow="1" background="background">
+      <row padding="12" gap="12" cross="center" background="surface">
+        <image image="{brandImage}" width="24" height="24" label="CodeCaddie icon"/>
+        <text><span mono="true">codecaddie</span></text>
+        <text foreground="text_muted">/</text>
+        <breadcrumb label="Report location">
+          <text size="sm" foreground="text_muted">Report</text>
+          <text size="sm" foreground="text_muted">›</text>
+          <text size="sm">Architecture map</text>
+        </breadcrumb>
+        <spacer grow="1"/>
+        <if test="{operationRunning}"><badge>Analysis running</badge></if>
+        <button variant="outline" size="sm" icon="chevron-left" on-press="close_architecture" autofocus="true">Back to report</button>
+      </row>
+      <separator/>
+      <scroll grow="1" value="{architectureScrollOffset}" on-scroll="architecture_scrolled">
+        <row main="center" padding="24">
+          <column width="880" gap="24">
+            <column gap="4">
+              <text size="sm" foreground="text_muted"><span mono="true">ARCHITECTURE MAP</span></text>
+              <text size="heading" wrap="true">How this codebase is put together</text>
+              <text foreground="text_muted" wrap="true">A validated component map of the analyzed repository. Every item is backed by immutable repository references. Components cited by a goal's findings link straight to those finding details and their snippets.</text>
+              <row gap="8" cross="center" role="group" label="Map sections">
+                <text size="sm" foreground="text_muted">Show</text>
+                <toggle-button selected="{mapSectionAll}" on-toggle="map_show_all">All sections</toggle-button>
+                <toggle-button selected="{mapSectionComponents}" on-toggle="map_show_components">Components</toggle-button>
+                <toggle-button selected="{mapSectionRelationships}" on-toggle="map_show_relationships">Relationships</toggle-button>
+                <toggle-button selected="{mapSectionFlows}" on-toggle="map_show_flows">Data flows</toggle-button>
+                <toggle-button selected="{mapSectionEntries}" on-toggle="map_show_entries">Entry points</toggle-button>
+              </row>
+            </column>
+            <if test="{mapLoading}">
+              <row padding="16" gap="12" cross="center" background="surface_subtle" radius="md">
+                <progress width="160" label="Loading the architecture map"/>
+                <text foreground="text_muted">Loading the saved architecture map…</text>
+              </row>
+            </if>
+            <if test="{mapFailed}">
+              <column gap="12">
+                <alert variant="destructive" text="Architecture map unavailable"><text wrap="true">{mapErrorMessage}</text></alert>
+                <row gap="8"><button variant="outline" size="sm" on-press="open_architecture" label="Try again to load the architecture map">Try again</button><button variant="ghost" size="sm" on-press="close_architecture">Back to report</button></row>
+              </column>
+            </if>
+            <if test="{mapReady}">
+              <if test="{hasMapWarning}"><alert variant="secondary" text="{mapWarningTitle}"><text wrap="true">{mapWarning}</text></alert></if>
+              <card padding="16" role="group" label="Map overview">
+                <column gap="8">
+                  <text size="sm" foreground="text_muted"><span mono="true">OVERVIEW</span></text>
+                  <text size="sm" foreground="text_muted" label="Map provenance"><span mono="true">{mapProvenanceLabel}</span></text>
+                  <text wrap="true">{mapSummary}</text>
+                  <text size="sm" wrap="true" foreground="text_muted">Style: {mapStyle}</text>
+                  <if test="{hasMapTechnologies}"><text size="sm" wrap="true" foreground="text_muted">{mapTechnologies}</text></if>
+                </column>
+              </card>
+              <if test="{hasMapKindGroups}">
+                <card padding="16" role="group" label="System at a glance">
+                  <column gap="8">
+                    <text size="sm" foreground="text_muted"><span mono="true">SYSTEM AT A GLANCE</span></text>
+                    <text size="sm" foreground="text_muted" wrap="true">The components grouped by role; each is detailed below.</text>
+                    <for each="mapKindGroups" as="group">
+                      <row gap="8" cross="start"><badge variant="secondary">{group.kind_label}</badge><text grow="1" size="sm" wrap="true">{group.names}</text></row>
+                    </for>
+                  </column>
+                </card>
+              </if>
+              <if test="{showMapComponents}"><column gap="12" role="list" label="Components">
+                <text size="sm" foreground="text_muted"><span mono="true">COMPONENTS</span></text>
+                <for each="mapComponentViews" as="component">
+                  <card padding="16" role="listitem" label="{component.name}">
+                    <column gap="8">
+                      <row gap="12" cross="center"><text grow="1"><span weight="medium">{component.name}</span></text><badge variant="secondary">{component.kind_label}</badge><badge variant="secondary" foreground="text_muted">{component.evidence_label}</badge></row>
+                      <text wrap="true">{component.responsibility}</text>
+                      <text size="sm" foreground="text_muted"><span mono="true">{component.root_paths}</span></text>
+                      <if test="{component.has_cited_goals}"><row gap="12" cross="center"><text grow="1" size="sm" foreground="text_muted" wrap="true">Cited in findings for: {component.cited_goals}</text><if test="{component.has_finding_link}"><button size="sm" variant="outline" on-press="map_open_finding:{component.finding_key}" label="{'Open finding details — ' ++ component.name}">Open finding details</button></if></row></if>
+                      <if test="{component.has_interfaces}"><column gap="4"><text size="sm"><span weight="medium">Key interfaces</span></text><text size="sm" wrap="true" foreground="text_muted">{component.interfaces}</text></column></if>
+                      <if test="{component.has_concerns}"><column gap="4"><row gap="6" cross="center"><icon name="alert" width="14" height="14" foreground="destructive" label="Warning"/><text size="sm"><span weight="medium">Concerns</span></text></row><text size="sm" wrap="true">{component.concerns}</text></column></if>
+                    </column>
+                  </card>
+                </for>
+              </column></if>
+              <if test="{hasMapRelations and showMapRelationships}">
+                <column gap="12" role="list" label="Relationships">
+                  <text size="sm" foreground="text_muted"><span mono="true">RELATIONSHIPS</span></text>
+                  <for each="mapRelationViews" as="relation">
+                    <row padding="12" gap="10" cross="center" background="surface_subtle" radius="md" role="listitem" label="{relation.label}">
+                      <text size="sm"><span mono="true">{relation.label}</span></text>
+                      <badge variant="secondary">{relation.kind_label}</badge>
+                      <text grow="1" size="sm" wrap="true" foreground="text_muted">{relation.description}</text>
+                    </row>
+                  </for>
+                </column>
+              </if>
+              <if test="{hasMapFlows and showMapFlows}">
+                <column gap="12" role="list" label="Data flows">
+                  <text size="sm" foreground="text_muted"><span mono="true">DATA FLOWS</span></text>
+                  <for each="mapFlowViews" as="flow">
+                    <card padding="16" role="listitem" label="{flow.name}">
+                      <column gap="8">
+                        <text><span weight="medium">{flow.name}</span></text>
+                        <text size="sm" wrap="true" foreground="text_muted">{flow.description}</text>
+                        <text size="sm"><span mono="true">{flow.steps}</span></text>
+                      </column>
+                    </card>
+                  </for>
+                </column>
+              </if>
+              <if test="{hasMapEntries and showMapEntries}">
+                <column gap="12" role="list" label="Entry points">
+                  <text size="sm" foreground="text_muted"><span mono="true">ENTRY POINTS</span></text>
+                  <for each="mapEntryViews" as="entry">
+                    <row padding="12" gap="10" cross="center" background="surface_subtle" radius="md" role="listitem" label="{entry.name}">
+                      <text size="sm"><span mono="true">{entry.name}</span></text>
+                      <badge variant="secondary">{entry.kind_label}</badge>
+                      <text grow="1" size="sm" foreground="text_muted">{entry.component}</text>
+                    </row>
+                  </for>
+                </column>
+              </if>
+            </if>
+          </column>
+        </row>
+      </scroll>
+    </column>
+  </if>
+
+  <if test="{deleteHistoryConfirmationOpen}">
+    <dialog width="520" padding="24" on-dismiss="cancel_delete_history" label="Remove saved analysis">
+      <column gap="16">
+        <text size="heading">Remove {deleteHistoryLabel} from history?</text>
+        <text wrap="true">This removes the run from the report table, comparisons, and active exports. The latest run is protected.</text>
+        <text size="sm" foreground="text_muted" wrap="true">Completed {deleteHistoryDate}. Its original signed completion record remains in the encrypted event ledger for recovery and audit integrity.</text>
+        <row main="end" gap="8"><button variant="outline" on-press="cancel_delete_history" autofocus="true" disabled="{historyDeleting}">Keep run</button><button variant="destructive" on-press="confirm_delete_history" disabled="{historyDeleting}">{deleteHistoryButtonLabel}</button></row>
+      </column>
+    </dialog>
+  </if>
+
+  <if test="{generateConfirmationOpen}">
+    <dialog width="520" padding="24" on-dismiss="dismiss_generate_goals" label="Regenerate goals">
+      <column gap="16">
+        <text size="heading">Replace the current goals?</text>
+        <text wrap="true">Generating goals with AI replaces every goal in this list, including your edits. This cannot be undone.</text>
+        <text size="sm" foreground="text_muted" wrap="true">Saved analyses and their goal history remain on this device.</text>
+        <row main="end" gap="8"><button variant="outline" on-press="dismiss_generate_goals" autofocus="true">Keep current goals</button><button variant="destructive" on-press="confirm_generate_goals">Replace with generated goals</button></row>
+      </column>
+    </dialog>
+  </if>
+
+  <if test="{discardConfirmationOpen}">
+    <dialog width="520" padding="24" on-dismiss="cancel_discard_goal_edits" label="Discard goal edits">
+      <column gap="16">
+        <text size="heading">Discard unsaved goal edits?</text>
+        <text wrap="true">This reloads the last saved goal set. Edits made since the last save cannot be recovered.</text>
+        <row main="end" gap="8"><button variant="outline" on-press="cancel_discard_goal_edits" autofocus="true">Keep editing</button><button variant="destructive" on-press="confirm_discard_goal_edits">Discard changes</button></row>
+      </column>
+    </dialog>
+  </if>
+
+  <if test="{recommendationPromptDiscardOpen}">
+    <dialog width="520" padding="24" on-dismiss="cancel_discard_recommendation_prompt" label="Discard action prompt edits">
+      <column gap="16"><text size="heading">Discard uncopied prompt edits?</text><text wrap="true">Your changes to this action prompt have not been copied. Returning to the report will discard them.</text><row main="end" gap="8"><button variant="outline" on-press="cancel_discard_recommendation_prompt" autofocus="true">Keep editing</button><button variant="destructive" on-press="confirm_discard_recommendation_prompt">Discard edits</button></row></column>
+    </dialog>
+  </if>
+
+  <if test="{recommendationPathOpen}">
+    <dialog width="640" padding="24" on-dismiss="cancel_recommendation_path" label="Choose how to resolve the review">
+      <column gap="16">
+        <text size="heading">How should this review be fixed?</text>
+        <text size="sm" foreground="text_muted" wrap="true">Choose one of three grounded paths. CodeCaddie will create an editable prompt from the selected recommendations, report, goals, and immutable evidence.</text>
+        <card padding="16"><row gap="16" cross="center"><column grow="1" gap="4"><row gap="8" cross="center"><text><span weight="medium">Fix the implementation</span></text><badge>Path 1</badge></row><text size="sm" foreground="text_muted" wrap="true">Implement the real repository gaps, prove them with tests, and request a fresh analysis.</text></column><button variant="primary" on-press="choose_implementation_path" autofocus="true">Create prompt</button></row></card>
+        <card padding="16"><row gap="16" cross="center"><column grow="1" gap="4"><row gap="8" cross="center"><text><span weight="medium">Revise the goal contract</span></text><badge variant="secondary">Path 2</badge></row><text size="sm" foreground="text_muted" wrap="true">Ask for precise, repository-verifiable goal wording without weakening a valid outcome to improve the grade.</text></column><button variant="outline" on-press="choose_goal_contract_path">Create prompt</button></row></card>
+        <card padding="16"><row gap="16" cross="center"><column grow="1" gap="4"><row gap="8" cross="center"><text><span weight="medium">Audit the analysis</span></text><badge variant="secondary">Path 3</badge></row><text size="sm" foreground="text_muted" wrap="true">Check whether the gap is code, evidence, goal wording, or a generic analyzer defect before changing anything.</text></column><button variant="outline" on-press="choose_analysis_audit_path">Create prompt</button></row></card>
+        <separator/>
+        <row gap="8" main="space_between" cross="center"><button variant="ghost" icon="edit" on-press="edit_goals_directly">Edit goals directly</button><button variant="outline" on-press="cancel_recommendation_path">Cancel</button></row>
+      </column>
+    </dialog>
+  </if>
+
+  <if test="{newProjectConfirmationOpen}">
+    <dialog width="520" padding="24" on-dismiss="cancel_new_project" label="Start a new project">
+      <column gap="16">
+        <text size="heading">Start a new project?</text>
+        <if test="{goalsDirty}"><text wrap="true">Your goal changes have not been saved with an analysis. Starting a new project will discard those changes.</text></if>
+        <else><text wrap="true">This closes the current project and returns to repository setup. Your goals are saved.</text></else>
+        <text size="sm" foreground="text_muted" wrap="true">Saved analyses and exported reports remain on this device.</text>
+        <row main="end" gap="8">
+          <if test="{goalsDirty}"><button variant="outline" on-press="cancel_new_project" autofocus="true">Keep editing</button><button variant="destructive" on-press="confirm_new_project">Discard changes and start new</button></if>
+          <else><button variant="outline" on-press="cancel_new_project" autofocus="true">Keep this project</button><button variant="destructive" on-press="confirm_new_project">Start new project</button></else>
+        </row>
+      </column>
+    </dialog>
+  </if>
+
+  <if test="{providerMenuOpen}">
+    <dialog width="440" padding="24" on-dismiss="close_provider_menu" label="AI provider">
+      <column gap="12">
+        <row cross="center"><text grow="1" size="heading">AI provider</text><button variant="ghost" size="sm" on-press="close_provider_menu" autofocus="true" label="Close provider menu">Close</button></row>
+        <text size="sm" foreground="text_muted" wrap="true">CodeCaddie uses the selected tool's existing local authorization.</text>
+        <separator/>
+        <if test="{grokInstalled}"><row gap="12" cross="center"><column grow="1" gap="2"><text>Grok</text><text size="sm" foreground="text_muted"><span mono="true">{grokVersion}</span></text></column><if test="{grokSelected}"><badge accent="accent" accent-foreground="accent_text">Selected</badge></if><else><button variant="outline" size="sm" on-press="select_grok">Use</button></else></row></if>
+        <if test="{codexInstalled}"><row gap="12" cross="center"><column grow="1" gap="2"><text>Codex</text><text size="sm" foreground="text_muted"><span mono="true">{codexVersion}</span></text></column><if test="{codexSelected}"><badge accent="accent" accent-foreground="accent_text">Selected</badge></if><else><button variant="outline" size="sm" on-press="select_codex">Use</button></else></row></if>
+        <if test="{claudeInstalled}"><row gap="12" cross="center"><column grow="1" gap="2"><text>Claude</text><text size="sm" foreground="text_muted"><span mono="true">{claudeVersion}</span></text></column><if test="{claudeSelected}"><badge accent="accent" accent-foreground="accent_text">Selected</badge></if><else><button variant="outline" size="sm" on-press="select_claude">Use</button></else></row></if>
+        <if test="{providerAvailable}"><separator/><row gap="8"><button variant="ghost" size="sm" on-press="open_settings">Provider settings</button><button variant="ghost" size="sm" on-press="check_providers" label="Check again for newly installed providers">Check again</button></row></if>
+        <else><button variant="primary" on-press="install_grok">Install Grok</button></else>
+      </column>
+    </dialog>
+  </if>
+
+  <if test="{settingsOpen}">
+    <dialog width="560" padding="24" on-dismiss="close_settings" label="Settings">
+      <column gap="16">
+        <row cross="center"><text grow="1" size="heading">Settings</text><button variant="ghost" size="sm" on-press="close_settings" autofocus="true">Close</button></row>
+        <separator/>
+        <text><span weight="medium">AI provider</span></text>
+        <text size="sm" wrap="true" foreground="text_muted">Choose among installed local tools. CodeCaddie never stores provider credentials.</text>
+        <row gap="8" role="group" label="Select AI provider"><if test="{grokInstalled}"><toggle-button selected="{grokSelected}" on-toggle="select_grok">Grok</toggle-button></if><if test="{codexInstalled}"><toggle-button selected="{codexSelected}" on-toggle="select_codex">Codex</toggle-button></if><if test="{claudeInstalled}"><toggle-button selected="{claudeSelected}" on-toggle="select_claude">Claude</toggle-button></if></row>
+        <separator/>
+        <text><span weight="medium">Application updates</span></text>
+        <row gap="12" cross="center"><text grow="1" size="sm" wrap="true" foreground="text_muted">{updateStatusLabel}</text><button variant="outline" size="sm" on-press="check_for_updates" disabled="{not updateCanCheck}">{updateCheckButtonLabel}</button></row>
+        <if test="{updateHasError}"><alert variant="secondary" text="Update status"><text wrap="true">{updateErrorMessage}</text></alert></if>
+        <separator/>
+        <text><span weight="medium">Local project data</span></text>
+        <text size="sm" wrap="true">CodeCaddie reports and IPC never contain source text. Your selected provider may process the repository snapshot under its authorization, settings, and privacy terms.</text>
+        <row main="space_between" cross="center"><button variant="ghost" size="sm" on-press="open_help">Help and documentation</button><button variant="primary" on-press="close_settings">Done</button></row>
+      </column>
+    </dialog>
+  </if>
+
+  <if test="{updatePromptOpen}">
+    <dialog width="540" padding="24" on-dismiss="dismiss_update" label="CodeCaddie update">
+      <column gap="16">
+        <row gap="12" cross="center"><text grow="1" size="heading">{updatePromptTitle}</text><if test="{updateRequired}"><badge accent="warning" accent-foreground="warning_text">Required</badge></if><else><badge variant="secondary">Update available</badge></else></row>
+        <text wrap="true">{updatePromptMessage}</text>
+        <row padding="12" background="surface_subtle" radius="md"><text size="sm"><span mono="true">{updateVersionLabel}</span></text></row>
+        <if test="{updateProgressVisible}"><row gap="12" cross="center"><progress width="120" label="Installing CodeCaddie update"/><text grow="1" size="sm" wrap="true" foreground="text_muted">{updateProgressLabel}</text></row></if>
+        <if test="{updateHasError}"><alert variant="secondary" text="Update paused"><text wrap="true">{updateErrorMessage}</text></alert></if>
+        <row main="end" gap="8"><if test="{updateCanDismiss}"><button variant="outline" on-press="dismiss_update">Not now</button></if><button variant="primary" on-press="update_and_restart" disabled="{updateActionDisabled}" autofocus="true">{updateActionLabel}</button></row>
+      </column>
+    </dialog>
+  </if>
+</panel>

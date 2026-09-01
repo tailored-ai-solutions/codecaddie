@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie release commander",
+  "reviewCadence": "Every protected-main run and every release",
+  "localOnly": true,
+  "dependencySecurity": {
+    "owner": "CodeCaddie security owner",
+    "criticalFindingSlaHours": 24,
+    "releaseBlockOnCritical": true,
+    "updateCadenceDays": 7,
+    "ecosystems": ["cargo", "npm", "github-actions"],
+    "scanCommands": [
+      "pnpm audit --audit-level high",
+      "cargo audit",
+      "cargo deny check licenses"
+    ]
+  },
+  "providerContract": {
+    "schema": "protocol/provider-contract-v1.schema.json",
+    "requiredBehavior": [
+      "versioned request and response",
+      "immutable evidence coordinates",
+      "bounded timeout",
+      "process-tree cancellation",
+      "typed content-free failure",
+      "malformed result rejection",
+      "no silent fallback"
+    ],
+    "executableTests": [
+      "every_provider_adapter_conforms_to_valid_malformed_timeout_error_and_no_fallback_cases",
+      "provider_timeout_and_cancellation_terminate_descendant_processes",
+      "successful_codex_runs_use_only_confined_tools_and_reap_descendants",
+      "stream_results_come_from_the_terminal_result_event",
+      "provider_failures_are_actionable_without_forwarding_stderr",
+      "bounded_provider_omissions_become_unverified_instead_of_losing_the_report"
+    ]
+  },
+  "snapshotLifecycle": {
+    "requiredOutcomes": [
+      "success",
+      "provider failure",
+      "timeout",
+      "cancellation",
+      "map generation",
+      "application restart",
+      "retry after released lease"
+    ],
+    "executableTests": [
+      "snapshot_lifecycle_matrix_proves_every_declared_cleanup_path",
+      "provider_snapshot_is_exact_commit_read_only_checkout_confined_and_removed",
+      "privacy_adversarial_snapshot_cleanup_after_success_failure_and_map_generation",
+      "privacy_adversarial_snapshot_cleanup_after_timeout_and_task_cancellation",
+      "privacy_adversarial_snapshot_cleanup_recovers_after_restart_without_touching_live_work"
+    ]
+  },
+  "persistenceRecovery": {
+    "requiredBoundaries": [
+      "temporary file sync",
+      "destination rename",
+      "quarantine rename",
+      "append write",
+      "append sync",
+      "storage capacity failure"
+    ],
+    "executableTests": [
+      "interrupted_plaintext_encryption_migration_retries_without_data_loss",
+      "fault_injected_atomic_new_retries_converge_across_sync_and_rename_boundaries",
+      "fault_injected_replacements_retry_without_losing_the_old_or_new_value",
+      "local_state_recovers_interrupted_quarantine_and_stale_sidecars",
+      "interrupted_plaintext_event_migration_retries_without_duplicates",
+      "fault_injected_append_retries_converge_without_duplicate_records",
+      "append_recovers_a_stale_unterminated_tail_before_the_next_record",
+      "interrupted_local_state_migrations_converge_before_and_after_rename",
+      "storage_capacity_failures_preserve_the_committed_value_for_retry"
+    ]
+  },
+  "crossPlatformJourney": {
+    "requiredSuites": ["macOS native (x64)", "macOS native (arm64)", "Windows native (x64)"],
+    "installedCoreCommand": "node scripts/exercise-installed-core.mjs --binary <installed-core>",
+    "requiredOutcomes": [
+      "package installation",
+      "installed framed protocol response",
+      "analysis and provider failure tests",
+      "saved report restart",
+      "metadata-only export",
+      "live installed scan cancellation with durable local cancellation record",
+      "repeat installation",
+      "uninstall with local data preservation"
+    ]
+  },
+  "releaseHealth": {
+    "stages": ["keyless signed draft", "immutable GitHub publication", "forward-only Latest reconciliation"],
+    "goNoGoOwner": "CodeCaddie release commander",
+    "requiredAutomatedGates": [
+      "exact-commit required CI suites",
+      "signed manifest and checksums",
+      "artifact attestations",
+      "expected asset set",
+      "supported-prior-version upgrade and failed-install transactional rollback matrix"
+    ],
+    "releaseWorkflow": ".github/workflows/release.yml",
+    "reconciliationWorkflow": ".github/workflows/reconcile-stable-release.yml",
+    "rollbackStrategy": "A reviewed protected-main corrective commit creates a newer build; GitHub Latest never moves backward.",
+    "incidentRunbook": "docs/INCIDENT-RESPONSE.md",
+    "correctiveActionIndex": "docs/incidents/README.md"
+  }
+}

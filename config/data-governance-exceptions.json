@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie privacy owner",
+  "reviewCadence": "Per release and quarterly",
+  "requiredFields": ["id", "scope", "rationale", "owner", "approvedAt", "expiresAt", "mitigations"],
+  "expiredExceptionsBlockRelease": true,
+  "exceptions": []
+}

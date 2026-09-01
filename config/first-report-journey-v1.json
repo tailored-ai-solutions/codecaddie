@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "journeyId": "workspace-to-first-saved-report",
+  "automatedTest": {
+    "framework": "native-zig",
+    "path": "apps/desktop/src/tests.zig",
+    "name": "end-to-end first-report journey proves repository selection commit capture recovery and saved success",
+    "ciCommand": "pnpm native:check"
+  },
+  "states": [
+    { "id": "repository-selected", "expected": "The platform folder picker hands one local path to Git validation before workspace creation." },
+    { "id": "commit-frozen", "expected": "The reopened saved report displays the exact repository commit captured by analysis." },
+    { "id": "empty-report", "expected": "A report empty state is rendered before any analysis exists." },
+    { "id": "invalid-goals", "expected": "Incomplete success checks block analysis without discarding the editable goal." },
+    { "id": "cancelled-analysis", "expected": "Cancellation returns to editable goals and keeps the approved goal available." },
+    { "id": "provider-failure", "expected": "A provider failure shows source-free recovery guidance and preserves the goal." },
+    { "id": "retry-started", "expected": "Retry starts a new bounded analysis from the preserved goal set." },
+    { "id": "saved-success", "expected": "The saved report reopens with history and an evidence-grounded recommendation." }
+  ]
+}

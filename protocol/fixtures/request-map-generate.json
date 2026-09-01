@@ -1,0 +1,18 @@
+{
+  "id": "desktop-map-generate",
+  "protocolVersion": 2,
+  "workspaceId": "workspace-1",
+  "method": "map.generate",
+  "params": {
+    "stream": true,
+    "repositories": [
+      {
+        "repositoryId": "attached-repository",
+        "repositoryPath": "/Users/example/projects/acme",
+        "commit": "HEAD"
+      }
+    ],
+    "provider": "codex",
+    "refresh": false
+  }
+}

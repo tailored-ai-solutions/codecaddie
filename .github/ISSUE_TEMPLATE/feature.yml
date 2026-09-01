@@ -1,0 +1,17 @@
+name: Feature request
+description: Propose a focused improvement
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes: { label: Problem, description: Describe the user problem before the solution. }
+    validations: { required: true }
+  - type: textarea
+    id: outcome
+    attributes: { label: Desired outcome }
+    validations: { required: true }
+  - type: textarea
+    id: trust
+    attributes: { label: Trust-boundary implications, description: Note effects on source locality, credentials, evidence, or updates. }
+    validations: { required: true }

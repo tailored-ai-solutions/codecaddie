@@ -1,0 +1,255 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		110000000000000000000001 /* placeholder.c in Sources */ = {isa = PBXBuildFile; fileRef = 120000000000000000000001 /* placeholder.c */; };
+		110000000000000000000002 /* codecaddie-core in Embed Executables */ = {isa = PBXBuildFile; fileRef = 120000000000000000000004 /* codecaddie-core */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		110000000000000000000003 /* codecaddie-updater in Embed Executables */ = {isa = PBXBuildFile; fileRef = 120000000000000000000005 /* codecaddie-updater */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		130000000000000000000001 /* Embed Executables */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				110000000000000000000002 /* codecaddie-core in Embed Executables */,
+				110000000000000000000003 /* codecaddie-updater in Embed Executables */,
+			);
+			name = "Embed Executables";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		120000000000000000000001 /* placeholder.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = placeholder.c; sourceTree = "<group>"; };
+		120000000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		120000000000000000000003 /* CodeCaddie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodeCaddie.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		120000000000000000000004 /* codecaddie-core */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = codecaddie-core; path = "$(DERIVED_FILE_DIR)/codecaddie-universal/codecaddie-core"; sourceTree = "<absolute>"; };
+		120000000000000000000005 /* codecaddie-updater */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = codecaddie-updater; path = "$(DERIVED_FILE_DIR)/codecaddie-universal/codecaddie-updater"; sourceTree = "<absolute>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		140000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		150000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				150000000000000000000002 /* CodeCaddie */,
+				150000000000000000000003 /* Generated Executables */,
+				150000000000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		150000000000000000000002 /* CodeCaddie */ = {
+			isa = PBXGroup;
+			children = (
+				120000000000000000000001 /* placeholder.c */,
+				120000000000000000000002 /* Info.plist */,
+			);
+			path = CodeCaddie;
+			sourceTree = "<group>";
+		};
+		150000000000000000000003 /* Generated Executables */ = {
+			isa = PBXGroup;
+			children = (
+				120000000000000000000004 /* codecaddie-core */,
+				120000000000000000000005 /* codecaddie-updater */,
+			);
+			name = "Generated Executables";
+			sourceTree = "<group>";
+		};
+		150000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				120000000000000000000003 /* CodeCaddie.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		160000000000000000000001 /* CodeCaddie */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 170000000000000000000002 /* Build configuration list for PBXNativeTarget "CodeCaddie" */;
+			buildPhases = (
+				180000000000000000000001 /* Sources */,
+				140000000000000000000001 /* Frameworks */,
+				190000000000000000000001 /* Assemble Universal Rust and Zig Payload */,
+				130000000000000000000001 /* Embed Executables */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CodeCaddie;
+			productName = CodeCaddie;
+			productReference = 120000000000000000000003 /* CodeCaddie.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		160000000000000000000002 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					160000000000000000000001 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = 170000000000000000000001 /* Build configuration list for PBXProject "CodeCaddie" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 150000000000000000000001;
+			productRefGroup = 150000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				160000000000000000000001 /* CodeCaddie */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		190000000000000000000001 /* Assemble Universal Rust and Zig Payload */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Assemble Universal Rust and Zig Payload";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/codecaddie-universal/codecaddie-core",
+				"$(DERIVED_FILE_DIR)/codecaddie-universal/codecaddie-updater",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/zsh;
+			shellScript = "\"$SRCROOT/../scripts/assemble-macos-xcode.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		180000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				110000000000000000000001 /* placeholder.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		200000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		200000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		200000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(CI_TEAM_ID)";
+				ENABLE_HARDENED_RUNTIME = YES;
+				EXECUTABLE_NAME = codecaddie;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CodeCaddie/Info.plist;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.4.0;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = org.codecaddie.desktop;
+				PRODUCT_NAME = CodeCaddie;
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+			};
+			name = Debug;
+		};
+		200000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(CI_TEAM_ID)";
+				ENABLE_HARDENED_RUNTIME = YES;
+				EXECUTABLE_NAME = codecaddie;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CodeCaddie/Info.plist;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.4.0;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = org.codecaddie.desktop;
+				PRODUCT_NAME = CodeCaddie;
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		170000000000000000000001 /* Build configuration list for PBXProject "CodeCaddie" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				200000000000000000000001 /* Debug */,
+				200000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		170000000000000000000002 /* Build configuration list for PBXNativeTarget "CodeCaddie" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				200000000000000000000003 /* Debug */,
+				200000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 160000000000000000000002 /* Project object */;
+}

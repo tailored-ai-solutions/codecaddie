@@ -1,0 +1,45 @@
+{
+  "name": "codecaddie",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Local-first business alignment for software systems",
+  "license": "MIT",
+  "homepage": "https://codecaddie.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tailored-ai-solutions/codecaddie.git"
+  },
+  "scripts": {
+    "build": "cargo build --workspace --locked && pnpm native:build",
+    "brand:check": "node scripts/check-brand-assets.mjs",
+    "brand:generate": "node scripts/generate-brand-assets.mjs",
+    "agents:setup": "node scripts/agents-setup.mjs",
+    "check": "pnpm version:check && pnpm brand:check && node --test scripts/tests/*.test.mjs && pnpm reliability:check && pnpm evidence:check && pnpm recovery:check && ./scripts/check-public-safety.sh && pnpm audit --audit-level high && cargo metadata --locked --format-version 1 >/dev/null && cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings && pnpm privacy:check && cargo test --workspace --locked && pnpm native:check",
+    "check:fast": "pnpm version:check && pnpm brand:check && node --test scripts/tests/*.test.mjs && ./scripts/check-public-safety.sh && cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked",
+    "check:release": "pnpm reliability:check && pnpm evidence:check && pnpm recovery:check && pnpm compatibility:check --require-clean",
+    "compatibility:check": "node scripts/exercise-supported-prior-binaries.mjs",
+    "dev": "pnpm native:dev",
+    "dev:isolated": "node scripts/dev-isolated.mjs",
+    "evidence:check": "node scripts/exercise-saved-evidence-checkout.mjs",
+    "install:local": "node scripts/install-local.mjs",
+    "native:build": "native build apps/desktop --yes -Dtrace=off -Dstrip=true",
+    "native:check": "native check apps/desktop --strict && native test apps/desktop --yes",
+    "native:dev": "native dev apps/desktop --yes -Dtrace=off",
+    "privacy:check": "cargo test --workspace --locked privacy_adversarial -- --nocapture",
+    "reliability:check": "node scripts/check-reliability-gates.mjs && cargo test -p codecaddie-core --test performance_gate --locked",
+    "recovery:check": "node scripts/exercise-recovery-matrix.mjs",
+    "verify:core": "node scripts/exercise-installed-core.mjs --binary target/debug/codecaddie-core --dev --only ping,journey --json --keep",
+    "version:check": "node scripts/version.mjs check",
+    "version:set": "node scripts/version.mjs set",
+    "test": "cargo test --workspace --locked && native test apps/desktop --yes"
+  },
+  "devDependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@native-sdk/cli": "0.10.1",
+    "opentype.js": "2.0.0"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "packageManager": "pnpm@11.22.0"
+}

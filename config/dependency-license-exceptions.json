@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "owner": "CodeCaddie security owner",
+  "reviewCadence": "Every locked dependency change and every release",
+  "policy": "No dependency outside deny.toml's commercial-distribution allowlist may ship without an active reviewed exception.",
+  "requiredFields": ["package", "license", "rationale", "approvedBy", "approvedAt", "expiresAt", "releaseLink"],
+  "exceptions": []
+}

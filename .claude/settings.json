@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "codecaddie": {
+      "source": {
+        "source": "github",
+        "repo": "tailored-ai-solutions/codecaddie"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "pstack@codecaddie": true
+  }
+}

@@ -1,0 +1,18 @@
+# Rust runtime dependency licenses
+
+Generated from the locked CodeCaddie Cargo dependency graph. Each entry lists
+the crates that use the retained upstream license text.
+
+{{#each licenses}}
+## {{name}} ({{id}})
+
+Used by:
+{{#each used_by}}
+- {{crate.name}} {{crate.version}}{{#if crate.repository}} — {{crate.repository}}{{/if}}
+{{/each}}
+
+```
+{{text}}
+```
+
+{{/each}}

@@ -1,0 +1,10 @@
+{
+  "id": "request-reliability-record",
+  "protocolVersion": 2,
+  "workspaceId": "workspace-123",
+  "method": "reliability.record",
+  "params": {
+    "kind": "operation_cancelled",
+    "operation": "scan.run"
+  }
+}

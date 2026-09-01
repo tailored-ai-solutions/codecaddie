@@ -1,0 +1,28 @@
+name: Bug report
+description: Report a reproducible CodeCaddie problem without sensitive data
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Never include source code, credentials, recovery bundles, customer data, or private paths. Report security issues privately.
+  - type: input
+    id: version
+    attributes: { label: CodeCaddie version, placeholder: "0.4.0 (build 2001)" }
+    validations: { required: true }
+  - type: dropdown
+    id: platform
+    attributes: { label: Platform, options: ["macOS Apple Silicon", "macOS Intel", "Windows x64 (source build)", "Linux (experimental source build)", "Local developer build"] }
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes: { label: Reproduction steps }
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes: { label: Expected behavior }
+    validations: { required: true }
+  - type: textarea
+    id: actual
+    attributes: { label: Actual behavior and sanitized logs }
+    validations: { required: true }
