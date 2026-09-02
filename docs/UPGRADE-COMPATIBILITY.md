@@ -11,12 +11,15 @@ build number. Only the identities listed in the matrix are supported prior
 versions. An older tag or build that is not listed is outside the supported
 set; release history alone does not silently expand the compatibility promise.
 
-The one-commit `0.4.0+2001` public snapshot is the only permitted empty matrix:
-there is no earlier signed public build that can safely participate in the new
-trust chain. The next public commit must change `firstPublicBaseline.status` to
-`established` and add `0.4.0+2001` with the immutable root commit SHA. CI fails
-closed if a pending baseline contains an entry or an established baseline does
-not begin with that exact version and build.
+A pending `firstPublicBaseline` is the only permitted empty matrix: until the
+first release is published there is no signed public build that can safely
+participate in the trust chain. The `0.4.0+2001` snapshot commit itself was
+never published because Xcode Cloud was connected after it, so the baseline is
+the first published build. The commit after that release must change
+`firstPublicBaseline.status` to `established`, record that build, and list it
+as the first supported prior build with its immutable source commit SHA. CI
+fails closed if a pending baseline contains an entry or an established baseline
+does not begin with the baseline's exact version and build.
 
 The `codecaddie-updater` test named
 `supported_prior_version_upgrade_and_rollback_matrix_preserves_real_encrypted_workspace_state`

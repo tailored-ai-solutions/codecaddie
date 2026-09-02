@@ -221,7 +221,7 @@ test("release runbook enforces the GitHub-only keyless macOS release contract", 
   assert.match(releaseRunbook, /downloads every asset and verifies bytes, checksums, manifest policy,\s+Sigstore identity, and attestations again/);
   assert.match(releaseRunbook, /does not create a second keyless signature/);
   assert.match(releaseRunbook, /high-water decision and `make_latest` value belong to\s+the single serialized draft-publication boundary/);
-  assert.match(releaseRunbook, /Rerunning build 2001 after build 2002 therefore verifies 2001 without changing\s+Latest/);
+  assert.match(releaseRunbook, /Rerunning an earlier build after a later one therefore verifies the earlier\s+build without changing Latest/);
 
   for (const asset of [
     "CodeCaddie-macOS-universal.zip",

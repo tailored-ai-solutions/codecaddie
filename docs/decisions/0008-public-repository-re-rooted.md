@@ -18,8 +18,11 @@ one parentless commit, `Open source CodeCaddie snapshot`, authored and
 signed off by the maintainer under the GitHub noreply address, built in a
 fresh directory from the sanitized tree. `scripts/verify-public-root.mjs`
 checks that shape mechanically (one root, one branch, no tags, no alternate
-objects, no private refs). The first release is build 2001 and every later
-squash merge increments the build by one. The private original repository
+objects, no private refs). Build numbers start at 2001 for the snapshot and
+every later squash merge increments the build by one. The first published
+build is the first commit archived through Xcode Cloud, recorded in
+`config/supported-upgrade-matrix.json` once the baseline is established,
+because the Apple workflow was connected after the snapshot. The private original repository
 stays private and is never pushed with `--mirror`.
 
 ## Consequences

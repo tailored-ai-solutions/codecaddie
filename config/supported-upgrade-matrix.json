@@ -7,7 +7,7 @@
     "status": "pending",
     "version": "0.4.0",
     "build": 2001,
-    "reason": "The one-commit public snapshot has no earlier public signed build. The next public commit must mark this baseline established and list build 2001 with its source commit."
+    "reason": "The public snapshot has no earlier public signed build, and the snapshot itself (build 2001) was never published because Xcode Cloud was connected after it. The commit after the first published release must mark this baseline established, replace build with that release's build, and list it with its source commit."
   },
   "supportedPriorBuilds": [],
   "requiredJourneys": [

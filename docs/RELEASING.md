@@ -15,8 +15,11 @@ protected branch's first-parent commit count.
 
 The independent public repository starts with one parentless root commit, so:
 
-- the root release is `0.4.0+2001`, tagged `v0.4.0+2001`;
-- the next squash merge is `0.4.0+2002`; and
+- the root snapshot is build `0.4.0+2001` and every squash merge adds one;
+- the first published release is the first protected-`main` commit whose
+  exact-commit CI, Xcode Cloud archive, and notarization all succeed, tagged
+  `v0.4.0+<build>`; the snapshot itself was never published because the Xcode
+  Cloud workflow was connected after it; and
 - every later protected-`main` commit receives a strictly increasing build.
 
 The tag, manifest, GitHub Release, Xcode Cloud provenance, attestations, and
@@ -104,9 +107,9 @@ identical.
 10. `Windows native (x64)`
 11. `DCO sign-off`
 
-Step 6 above is the first-root/manual-dispatch exception needed to create
-build 2001. Later
-`workflow_dispatch` runs may only retry an already qualified exact
+Step 6 above is the first-root/manual-dispatch exception that would have let
+a manual CI run qualify build 2001; it went unused because the snapshot was
+never published. Later `workflow_dispatch` runs may only retry an already qualified exact
 protected-`main` commit; they are not a way to choose a different source or
 release identity. Every subsequent protected-`main` push starts its release
 automatically.
@@ -274,9 +277,9 @@ because the job restarted. Only missing draft assets may be added. A published
 immutable release must already be complete and byte-identical; it is never
 edited, replaced, redrafted, or retagged.
 
-Rerunning build 2001 after build 2002 therefore verifies 2001 without changing
-Latest. Rerunning build 2002 reuses its immutable material and leaves Latest at
-2002.
+Rerunning an earlier build after a later one therefore verifies the earlier
+build without changing Latest. Rerunning the later build reuses its immutable
+material and leaves Latest where it was.
 
 ## Recovery and rollback
 
@@ -319,34 +322,34 @@ bundle.
 
 ## Release acceptance
 
-Build 2001 is publishable only after all of these checks pass:
+The first build is publishable only after all of these checks pass:
 
 1. The public repository has the new repository ID, one parentless commit,
    one branch, no private objects or identifiers, the required controls, and a
    remote tree identical to the reviewed sanitized tree. The private original
    remains private and retains its original repository ID.
-2. Xcode Cloud returns the exact-root-commit signed, stapled, notarized
+2. Xcode Cloud returns the exact-commit signed, stapled, notarized
    universal application. Local validation passes `codesign`, stapling,
    Gatekeeper, bundle/version/build checks, and archive safety checks.
 3. Every release asset returns HTTP 200 without authentication. The manifest,
    Sigstore bundle, source SHA, checksums, SBOM, provenance, and GitHub
    attestations agree. The release is immutable and GitHub Latest resolves to
-   `v0.4.0+2001`.
+   that build's tag.
 4. Downloading through `codecaddie.ai` replaces the unsigned development
-   installation on an Apple Silicon Mac, launches build 2001, and preserves
+   installation on an Apple Silicon Mac, launches that build, and preserves
    the existing data directory, goals, and reports.
 
 Then squash-merge the compatibility/smoke change. Its protected-`main` push
-must establish build 2001 as the first supported upgrade baseline and
-automatically publish `v0.4.0+2002`. The root release is the only permitted
-empty prior-public-build matrix. With build 2001 installed, exercise both the
-startup check and simulated six-hour timer, choose **Update and restart**, and
-confirm relaunch on build 2002 with the same Apple identity, notarization,
-goals, and reports. A subsequent check must report up to date.
+must establish the first published build as the first supported upgrade
+baseline and automatically publish the next build. A pending baseline is the
+only permitted empty prior-public-build matrix. With the first published build
+installed, exercise both the startup check and simulated six-hour timer, choose
+**Update and restart**, and confirm relaunch on the next build with the same
+Apple identity, notarization, goals, and reports. A subsequent check must report up to date.
 
 Finally:
 
-- rerun 2001 and 2002 to prove forward-only Latest and immutable reuse;
+- rerun both builds to prove forward-only Latest and immutable reuse;
 - prove offline, HTTP 404, corrupt archive, unsafe archive traversal, wrong
   workflow identity, wrong source SHA, bad digest, wrong Apple publisher, and
   downgrade attempts fail without replacing the app;
