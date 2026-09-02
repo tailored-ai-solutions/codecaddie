@@ -325,6 +325,10 @@ jobs:
   windows-native-primary:
     name: Windows primary test, build, and package (x64)
     runs-on: windows-2025
+    env:
+      # link.exe embeds non-reproducible identity unless asked not to; the
+      # reproducibility gate compares two clean builds of the same commit.
+      RUSTFLAGS: -C link-arg=/Brepro
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -424,6 +428,10 @@ jobs:
   windows-native-independent:
     name: Windows independent clean build (x64)
     runs-on: windows-2025
+    env:
+      # link.exe embeds non-reproducible identity unless asked not to; the
+      # reproducibility gate compares two clean builds of the same commit.
+      RUSTFLAGS: -C link-arg=/Brepro
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
