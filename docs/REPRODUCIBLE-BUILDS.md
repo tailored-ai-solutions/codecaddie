@@ -27,7 +27,13 @@ platform payload is packaged. On Windows, the application build also disables
 the Native SDK install step's PDB copy when stripping is requested: Zig 0.16
 classifies the ReleaseFast artifact before the application-level strip override
 and would otherwise try to install a detached PDB that the stripped linker
-correctly did not emit. The Rust core and updater use exact executable bytes.
+correctly did not emit. The Rust core and updater use exact executable bytes. Both Windows build jobs
+link with the MSVC linker's reproducible-build flag (`RUSTFLAGS=-C
+link-arg=/Brepro`): without it, two clean builds of the same commit on the
+same runner image produced executables of identical size whose bytes still
+differed after the documented PE/COFF normalization, so the comparison had
+never passed. Any manual Windows capture must set the same flag before
+`cargo build --release`.
 The release profile uses one Rust code-generation unit without cross-crate LTO.
 This keeps LLVM's inter-crate optimization scheduler out of the release-link
 identity after two otherwise identical clean Windows workers produced different
