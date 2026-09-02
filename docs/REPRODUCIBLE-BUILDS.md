@@ -54,6 +54,14 @@ requested architecture before normalization; the runner host label alone is
 not accepted as architecture evidence. These checks protect the source-built
 preview; no Windows release signer or signing credential is configured.
 
+Both Windows runners also disable NTFS 8.3 short-name creation on their `C:` and
+`D:` volumes before any toolchain or dependency is extracted (`fsutil 8dot3name
+set <volume> 1`). The `aws-lc-sys` build script, pulled in as rustls's crypto
+provider through `reqwest`, converts its source paths to 8.3 short names before
+invoking `cl.exe`, and NTFS numbers the colliding `aws-lc-rs` and `aws-lc-sys`
+short names by creation order. With short names disabled the embedded `__FILE__`
+strings are the full registry paths, which are identical on both runners.
+
 The comparison deliberately runs before platform signing. Developer ID and
 notarization evidence is externally issued and
 are not byte-reproducible. The CI comparison proves that two exact-commit,

@@ -249,6 +249,12 @@ test("Windows reproducibility captures one app build on each isolated runner and
       1,
       "each isolated runner must serialize the baseline-CPU cache warm-up",
     );
+    assert.match(build, /name: Disable 8\.3 short-name creation so embedded source paths are deterministic/);
+    assert.match(build, /fsutil 8dot3name set C: 1\n\s+fsutil 8dot3name set D: 1/);
+    assert.ok(
+      build.indexOf("fsutil 8dot3name set") < build.indexOf("actions/checkout@"),
+      "8.3 short-name creation must be disabled before any checkout, toolchain, or dependency step",
+    );
     assert.match(build, /name: Isolate the Windows Zig warm-up cache/);
     assert.match(build, /ZIG_LOCAL_CACHE_DIR=\$warmLocal/);
     assert.match(build, /name: Reset the (?:primary|independent) release-local Zig graph/);
