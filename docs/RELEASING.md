@@ -118,6 +118,9 @@ record, but do not submit the application to the Mac App Store. Connect only
 the new public repository to Xcode Cloud. The shared CodeCaddie scheme uses a
 pinned build image, an Archive action, and Apple's built-in Notarize
 post-action.
+Xcode Cloud runs the toolchain bootstrap from `xcode/ci_scripts/ci_post_clone.sh`;
+the directory must stay beside `xcode/CodeCaddie.xcodeproj`, because Xcode
+Cloud ignores a `ci_scripts` directory anywhere else.
 
 Xcode Cloud retains the non-exportable Developer ID credential. It returns one
 finished, signed, hardened-runtime, stapled, notarized universal application
