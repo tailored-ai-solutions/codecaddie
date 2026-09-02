@@ -343,3 +343,16 @@ test("release command-line scripts remain executable", async () => {
     assert.notEqual(details.mode & 0o111, 0, `${path} must be executable`);
   }
 });
+
+test("Xcode Cloud bootstrap downloads only versioned, checksum-pinned toolchains", async () => {
+  const bootstrap = await readFile(new URL("xcode/ci_scripts/ci_post_clone.sh", root), "utf8");
+  assert.match(bootstrap, /^NODE_VERSION="\d+\.\d+\.\d+"$/m);
+  assert.match(bootstrap, /^RUSTUP_VERSION="\d+\.\d+\.\d+"$/m);
+  assert.match(bootstrap, /https:\/\/nodejs\.org\/dist\/v\$NODE_VERSION\//);
+  assert.match(bootstrap, /https:\/\/static\.rust-lang\.org\/rustup\/archive\/\$RUSTUP_VERSION\//);
+  assert.doesNotMatch(bootstrap, /rustup\/dist\//, "the unversioned rustup URL changes under its checksum");
+  const checksums = [...bootstrap.matchAll(/^\s*(node|rustup)_sha256=([0-9a-f]+)$/gm)];
+  assert.equal(checksums.length, 4, "one node and one rustup checksum per architecture");
+  for (const [, , digest] of checksums) assert.equal(digest.length, 64);
+  assert.match(bootstrap, /shasum -a 256 --check/);
+});
