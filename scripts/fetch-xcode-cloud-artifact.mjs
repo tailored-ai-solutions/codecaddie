@@ -21,7 +21,10 @@ export function createAppStoreConnectToken({
   requestPath,
   now = Date.now(),
 }) {
-  if (!/^[A-Z0-9]{10}$/.test(keyId)) throw new Error("invalid App Store Connect key ID");
+  // Team keys carry ten-character IDs; individual keys (ApiKey_<id>.p8) carry
+  // twelve. Only individual keys are accepted by this pipeline, but the shape
+  // check stays permissive to both so a key ID is never rejected for its length.
+  if (!/^[A-Z0-9]{10,12}$/.test(keyId)) throw new Error("invalid App Store Connect key ID");
   if (
     typeof requestPath !== "string"
     || !requestPath.startsWith("/v1/")
