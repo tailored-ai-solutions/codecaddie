@@ -115,3 +115,12 @@ test("artifact retrieval uses only Apple's ciArtifacts read endpoint", () => {
   assert.doesNotMatch(fetcherSource, /method:\s*["'`](?:POST|PUT|PATCH|DELETE)["'`]/);
   assert.doesNotMatch(fetcherSource, /APP_STORE_CONNECT_(?:ISSUER_ID|KEY_SCOPE)/);
 });
+
+test("a twelve-character individual key ID is accepted and a malformed one is rejected", () => {
+  const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+  assert.ok(createAppStoreConnectToken({ keyId: "ABCDEFGHIJKL", privateKey, requestPath: "/v1/ciBuildRuns/1" }));
+  assert.throws(
+    () => createAppStoreConnectToken({ keyId: "abc", privateKey, requestPath: "/v1/ciBuildRuns/1" }),
+    /invalid App Store Connect key ID/,
+  );
+});
