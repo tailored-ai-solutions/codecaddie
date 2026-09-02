@@ -21,6 +21,11 @@ All notable changes are documented here. The format follows
 
 ### Changed
 
+- The cryptography and utility crates moved to their current majors (argon2
+  0.6, base64 0.23, chacha20poly1305 0.11, ed25519-dalek 3, rand 0.10,
+  x509-cert 0.3) with byte-identical outputs across the upgrade. An
+  unavailable operating-system random generator is now reported as an error
+  instead of aborting the core; see decision record 0012.
 - The demo fixture is now `testdata/acme-demo`: nine goals for Acme, a
   document-search service whose shape matches the bundled demo repository,
   replacing the previous example company.

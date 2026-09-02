@@ -13,7 +13,6 @@ use chacha20poly1305::{
     aead::{Aead, KeyInit, Payload},
 };
 use codecaddie_domain::{EventEnvelope, Role, WorkspaceProjection};
-use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use zeroize::Zeroizing;
@@ -222,10 +221,10 @@ fn seal_inner(
         anyhow::bail!("portable backup payload exceeds the 64 MiB limit");
     }
     let mut salt = [0_u8; SALT_BYTES];
-    rand::rngs::OsRng.fill_bytes(&mut salt);
+    crate::at_rest::fill_random_bytes(&mut salt)?;
     let key = derive_key(passphrase, &salt)?;
     let mut nonce = [0_u8; NONCE_BYTES];
-    rand::rngs::OsRng.fill_bytes(&mut nonce);
+    crate::at_rest::fill_random_bytes(&mut nonce)?;
     let cipher = XChaCha20Poly1305::new_from_slice(key.as_ref())
         .map_err(|_| anyhow::anyhow!("portable backup key derivation failed"))?;
     let ciphertext = cipher

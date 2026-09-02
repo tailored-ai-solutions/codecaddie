@@ -3,7 +3,6 @@
 
 use codecaddie_domain::{DeviceIdentity, Role};
 use ed25519_dalek::{SECRET_KEY_LENGTH, SigningKey};
-use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
@@ -21,15 +20,15 @@ pub(crate) struct LocalDeviceSecret {
 }
 
 impl LocalDeviceSecret {
-    fn random() -> Self {
+    fn random() -> anyhow::Result<Self> {
         let mut signing_seed = [0_u8; SECRET_KEY_LENGTH];
-        OsRng.fill_bytes(&mut signing_seed);
-        Self {
+        crate::at_rest::fill_random_bytes(&mut signing_seed)?;
+        Ok(Self {
             actor_id: format!("actor-{}", Uuid::new_v4()),
             device_id: format!("device-{}", Uuid::new_v4()),
             label: "This device".into(),
             signing_seed: signing_seed.to_vec(),
-        }
+        })
     }
 
     pub fn signing_key(&self) -> anyhow::Result<SigningKey> {
@@ -101,12 +100,12 @@ pub(super) struct LocalState {
 }
 
 impl LocalState {
-    pub(super) fn new() -> Self {
-        Self {
+    pub(super) fn new() -> anyhow::Result<Self> {
+        Ok(Self {
             format: LOCAL_STATE_FORMAT.into(),
-            device: LocalDeviceSecret::random(),
+            device: LocalDeviceSecret::random()?,
             workspaces: BTreeMap::new(),
-        }
+        })
     }
 
     pub(super) fn validate(&self) -> anyhow::Result<()> {
@@ -150,7 +149,7 @@ mod tests {
 
     #[test]
     fn v2_local_state_is_readable_and_atomically_advances_to_v3_on_save() {
-        let state = LocalState::new();
+        let state = LocalState::new().unwrap();
         let mut value = serde_json::to_value(&state).unwrap();
         value["format"] = serde_json::Value::String(LOCAL_STATE_FORMAT_V2.into());
         let mut migrated: LocalState = serde_json::from_value(value).unwrap();
@@ -169,7 +168,7 @@ mod tests {
             crate::at_rest::ContentCipher::for_tests(),
         )
         .unwrap();
-        let mut v2 = LocalState::new();
+        let mut v2 = LocalState::new().unwrap();
         v2.format = LOCAL_STATE_FORMAT_V2.into();
         state_file.save(&v2).unwrap();
 

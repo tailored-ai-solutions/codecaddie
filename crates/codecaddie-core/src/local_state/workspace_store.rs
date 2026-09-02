@@ -876,7 +876,7 @@ impl LocalWorkspaceStore {
         let mut local_state = if self.local_state.exists() {
             self.load_local_state()?
         } else {
-            LocalState::new()
+            LocalState::new()?
         };
         let workspace_id = Uuid::now_v7().to_string();
         let identity = local_state.device.public_identity()?;
@@ -1695,7 +1695,7 @@ impl LocalWorkspaceStore {
         let mut local_state = if self.local_state.exists() {
             self.load_local_state()?
         } else {
-            LocalState::new()
+            LocalState::new()?
         };
         let restored_identity = payload.device.public_identity()?;
         if local_state.workspaces.is_empty() {
