@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 .env*
+xcode/XcodeCloud.local.xcconfig
 *.p8
 *.p12
 *.pfx

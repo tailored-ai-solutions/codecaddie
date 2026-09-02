@@ -123,7 +123,13 @@ pinned build image, an Archive action, and Apple's built-in Notarize
 post-action.
 Xcode Cloud runs the toolchain bootstrap from `xcode/ci_scripts/ci_post_clone.sh`;
 the directory must stay beside `xcode/CodeCaddie.xcodeproj`, because Xcode
-Cloud ignores a `ci_scripts` directory anywhere else.
+Cloud ignores a `ci_scripts` directory anywhere else. Xcode Cloud exposes the
+Apple team (`CI_TEAM_ID`) only to those custom build scripts, not to the
+archive's run-script phase, so `ci_post_clone.sh` writes the gitignored
+`xcode/XcodeCloud.local.xcconfig`, which `xcode/CodeCaddie.xcconfig` includes
+optionally; the project's `DEVELOPMENT_TEAM` and
+`scripts/assemble-macos-xcode.sh` both read `CODECADDIE_APPLE_TEAM_ID` from it,
+and no tracked file ever carries the team ID.
 
 Xcode Cloud retains the non-exportable Developer ID credential. It returns one
 finished, signed, hardened-runtime, stapled, notarized universal application

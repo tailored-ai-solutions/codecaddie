@@ -24,6 +24,21 @@ if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
 fi
 [[ "$(git rev-parse --is-shallow-repository)" == "false" ]]
 
+# Xcode Cloud exposes CI_TEAM_ID to custom build scripts only; the archive's
+# run-script phase never sees it. Hand the team to xcodebuild through the
+# optional, gitignored xcconfig that xcode/CodeCaddie.xcconfig includes, so the
+# project's DEVELOPMENT_TEAM and scripts/assemble-macos-xcode.sh both resolve
+# CODECADDIE_APPLE_TEAM_ID without any tracked file carrying the team ID.
+if [[ -n "${CI_XCODE_CLOUD:-}" ]]; then
+  if [[ ! "${CI_TEAM_ID:-}" =~ ^[A-Z0-9]{10}$ ]]; then
+    echo "Xcode Cloud did not provide a valid CI_TEAM_ID" >&2
+    exit 1
+  fi
+  printf '// Written by ci_post_clone.sh on Xcode Cloud; gitignored, never tracked.\nCODECADDIE_APPLE_TEAM_ID = %s\n' "$CI_TEAM_ID" \
+    > "$REPOSITORY_PATH/xcode/XcodeCloud.local.xcconfig"
+  /bin/chmod 600 "$REPOSITORY_PATH/xcode/XcodeCloud.local.xcconfig"
+fi
+
 case "$(uname -m)" in
   arm64)
     node_arch=arm64
