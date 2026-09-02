@@ -1,7 +1,9 @@
 #!/usr/bin/env zsh
 set -euo pipefail
 
-REPOSITORY_PATH="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/.." && pwd)}"
+# Xcode Cloud only runs ci_scripts that sit beside the .xcodeproj, so this
+# directory lives under xcode/; the repository root is two levels up.
+REPOSITORY_PATH="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/../.." && pwd)}"
 TOOLCHAIN_ROOT="$REPOSITORY_PATH/.codecaddie-toolchain"
 NODE_VERSION="24.15.0"
 export PATH="$TOOLCHAIN_ROOT/node/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"

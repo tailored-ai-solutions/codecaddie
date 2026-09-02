@@ -246,8 +246,6 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          test "$(gh api "repos/$GITHUB_REPOSITORY/immutable-releases" \
-            --jq '.enabled == true or .enforced_by_owner == true')" = true
           observed_latest=""
           if ! observed_latest="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" \
             --jq .tag_name 2>observed-latest-error.txt)"; then
@@ -260,6 +258,7 @@ jobs:
 
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
             > requested-release-before-publication.json
+          test "$(jq -er .immutable requested-release-before-publication.json)" = true
           test "$(jq -er .target_commitish requested-release-before-publication.json)" = "$GITHUB_SHA"
           test "$(jq -er '.assets | map(.name) | length == (unique | length)' requested-release-before-publication.json)" = true
           jq -r '.assets[].name' requested-release-before-publication.json \
