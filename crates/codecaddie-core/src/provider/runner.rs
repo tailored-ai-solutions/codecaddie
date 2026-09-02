@@ -538,7 +538,7 @@ mod tests {
             .unwrap()
             * 1_000;
         let directory = super::super::executable_script(
-            "#!/bin/sh\nresult=''\nwhile [ \"$#\" -gt 0 ]; do\n  if [ \"$1\" = '--output-last-message' ]; then result=$2; shift 2; else shift; fi\ndone\ncat >/dev/null\nprintf '{\"ok\":true}' > \"$result\"\n",
+            "#!/bin/sh\ncat >/dev/null\nresult=''\nwhile [ \"$#\" -gt 0 ]; do\n  if [ \"$1\" = '--output-last-message' ]; then result=$2; shift 2; else shift; fi\ndone\ncat >/dev/null\nprintf '{\"ok\":true}' > \"$result\"\n",
         );
         let prepared = PreparedProvider {
             kind: ProviderKind::Codex,
@@ -792,7 +792,7 @@ mod tests {
         std::fs::write(
             &executable,
             format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" > '{}'\nresult=''\nwhile [ \"$#\" -gt 0 ]; do\n  if [ \"$1\" = '--output-last-message' ]; then result=$2; shift 2; else shift; fi\ndone\n(sleep 30 </dev/null >/dev/null 2>&1) &\nprintf $! > '{}'\nprintf '{{\"ok\":true}}' > \"$result\"\n",
+                "#!/bin/sh\ncat >/dev/null\nprintf '%s\\n' \"$*\" > '{}'\nresult=''\nwhile [ \"$#\" -gt 0 ]; do\n  if [ \"$1\" = '--output-last-message' ]; then result=$2; shift 2; else shift; fi\ndone\n(sleep 30 </dev/null >/dev/null 2>&1) &\nprintf $! > '{}'\nprintf '{{\"ok\":true}}' > \"$result\"\n",
                 args_file.display(),
                 pid_file.display()
             ),
