@@ -330,6 +330,18 @@ jobs:
       # reproducibility gate compares two clean builds of the same commit.
       RUSTFLAGS: -C link-arg=/Brepro
     steps:
+      - name: Disable 8.3 short-name creation so embedded source paths are deterministic
+        shell: pwsh
+        run: |
+          # aws-lc-sys (rustls's crypto provider via reqwest) converts its source
+          # paths to 8.3 short names before invoking cl.exe, and NTFS numbers the
+          # colliding aws-lc-rs / aws-lc-sys short names by creation order. Without
+          # this, the two clean builds embed different __FILE__ strings
+          # (AWS-LC~1.0 versus AWS-LC~2.0) and the reproducibility gate fails.
+          fsutil 8dot3name set C: 1
+          fsutil 8dot3name set D: 1
+          fsutil 8dot3name query C:
+          fsutil 8dot3name query D:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: ${{ github.sha }}
@@ -442,6 +454,18 @@ jobs:
       # reproducibility gate compares two clean builds of the same commit.
       RUSTFLAGS: -C link-arg=/Brepro
     steps:
+      - name: Disable 8.3 short-name creation so embedded source paths are deterministic
+        shell: pwsh
+        run: |
+          # aws-lc-sys (rustls's crypto provider via reqwest) converts its source
+          # paths to 8.3 short names before invoking cl.exe, and NTFS numbers the
+          # colliding aws-lc-rs / aws-lc-sys short names by creation order. Without
+          # this, the two clean builds embed different __FILE__ strings
+          # (AWS-LC~1.0 versus AWS-LC~2.0) and the reproducibility gate fails.
+          fsutil 8dot3name set C: 1
+          fsutil 8dot3name set D: 1
+          fsutil 8dot3name query C:
+          fsutil 8dot3name query D:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: ${{ github.sha }}
