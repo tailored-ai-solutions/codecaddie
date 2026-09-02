@@ -325,6 +325,10 @@ jobs:
   windows-native-primary:
     name: Windows primary test, build, and package (x64)
     runs-on: windows-2025
+    env:
+      # link.exe embeds non-reproducible identity unless asked not to; the
+      # reproducibility gate compares two clean builds of the same commit.
+      RUSTFLAGS: -C link-arg=/Brepro
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -391,6 +395,15 @@ jobs:
           --platform windows
           --architecture x64
           --output dist/reproducibility/windows-x64-primary.json
+      - name: Retain primary Windows release executables for reproducibility diagnosis
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-x64-primary-executables
+          if-no-files-found: error
+          retention-days: 3
+          path: |
+            target/release/codecaddie-core.exe
+            target/release/codecaddie-updater.exe
       - name: Package captured exact-commit Windows build
         shell: pwsh
         run: ./scripts/package-windows.ps1 -Version 0.3.0-dev -Channel dev -UseExistingBuild
@@ -424,6 +437,10 @@ jobs:
   windows-native-independent:
     name: Windows independent clean build (x64)
     runs-on: windows-2025
+    env:
+      # link.exe embeds non-reproducible identity unless asked not to; the
+      # reproducibility gate compares two clean builds of the same commit.
+      RUSTFLAGS: -C link-arg=/Brepro
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -481,6 +498,15 @@ jobs:
           --platform windows
           --architecture x64
           --output dist/reproducibility/windows-x64-independent.json
+      - name: Retain independent Windows release executables for reproducibility diagnosis
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-x64-independent-executables
+          if-no-files-found: error
+          retention-days: 3
+          path: |
+            target/release/codecaddie-core.exe
+            target/release/codecaddie-updater.exe
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: reproducibility-windows-x64-independent
