@@ -50,7 +50,11 @@ All notable changes are documented here. The format follows
 
 ## [0.4.0] - 2026-08-30
 
-Initial open-source release. The first published desktop build is `0.4.0+2001`.
+Initial open-source release. The public repository starts at build `0.4.0+2001`,
+the snapshot commit. The first published desktop build is the first protected-
+`main` commit archived and notarized through Xcode Cloud after the Apple signing
+chain was connected; `config/supported-upgrade-matrix.json` records its exact
+build once the baseline is established.
 
 ### Added
 
@@ -80,5 +84,5 @@ Initial open-source release. The first published desktop build is `0.4.0+2001`.
 - Windows is coming soon, pending SignPath Foundation open-source signing.
 - Linux remains an unsupported source-built experiment.
 
-[Unreleased]: https://github.com/tailored-ai-solutions/codecaddie/compare/v0.4.0+2001...HEAD
-[0.4.0]: https://github.com/tailored-ai-solutions/codecaddie/releases/tag/v0.4.0+2001
+[Unreleased]: https://github.com/tailored-ai-solutions/codecaddie/compare/066b8cd223034e41fd587035ac71479caeb7c76c...HEAD
+[0.4.0]: https://github.com/tailored-ai-solutions/codecaddie/releases

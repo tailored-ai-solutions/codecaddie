@@ -12,10 +12,10 @@ test("the first public snapshot explicitly permits an empty prior-build baseline
   assert.equal(matrix.schemaVersion, 2);
   assert.equal(matrix.firstPublicBaseline.status, "pending");
   assert.equal(matrix.firstPublicBaseline.version, "0.4.0");
-  assert.equal(matrix.firstPublicBaseline.build, 2001);
+  assert.ok(matrix.firstPublicBaseline.build >= 2001);
   assert.deepEqual(matrix.supportedPriorBuilds, []);
   assert.match(exercise, /only the first public snapshot may have an empty prior-build matrix/);
-  assert.match(exercise, /first public build 2001 has no prior public baseline/);
+  assert.match(exercise, /no public build is published yet, so the prior-build matrix is empty/);
 });
 
 test("established supported prior versions execute real binaries in both directions", () => {

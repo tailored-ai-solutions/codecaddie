@@ -8,7 +8,7 @@ body:
       value: Never include source code, credentials, recovery bundles, customer data, or private paths. Report security issues privately.
   - type: input
     id: version
-    attributes: { label: CodeCaddie version, placeholder: "0.4.0 (build 2001)" }
+    attributes: { label: CodeCaddie version, placeholder: "0.4.0 (build 2007)" }
     validations: { required: true }
   - type: dropdown
     id: platform

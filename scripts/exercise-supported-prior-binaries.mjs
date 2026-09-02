@@ -261,7 +261,10 @@ export function exerciseSupportedPriorVersions({
     ["build", "reason", "status", "version"],
   );
   assert.equal(matrix.firstPublicBaseline.version, "0.4.0");
-  assert.equal(matrix.firstPublicBaseline.build, 2001);
+  assert.ok(
+    Number.isInteger(matrix.firstPublicBaseline.build) && matrix.firstPublicBaseline.build >= 2001,
+    "the first public baseline is a public build at or after the snapshot",
+  );
   assert.ok(matrix.firstPublicBaseline.reason.length >= 40);
   if (matrix.firstPublicBaseline.status === "pending") {
     assert.equal(matrix.currentVersion, matrix.firstPublicBaseline.version);
@@ -325,7 +328,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   }
   const result = exerciseSupportedPriorVersions({ requireClean: process.argv.includes("--require-clean") });
   if (result.pendingFirstPublicBaseline) {
-    console.log("supported prior-version binaries passed: first public build 2001 has no prior public baseline");
+    console.log("supported prior-version binaries passed: no public build is published yet, so the prior-build matrix is empty");
   } else {
     console.log(`supported prior-version binaries passed: current ${result.currentCommit}; builds ${result.builds.join(", ")}`);
   }

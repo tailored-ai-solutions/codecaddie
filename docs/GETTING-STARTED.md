@@ -8,8 +8,8 @@ and your repository source never enters its storage, reports, or IPC.
 
 **macOS (Apple Silicon or Intel).** Download
 [`CodeCaddie-macOS-universal.zip`](https://github.com/tailored-ai-solutions/codecaddie/releases/latest/download/CodeCaddie-macOS-universal.zip).
-Downloads appear with the first release; the link returns 404 until build
-2001 is published. The ZIP contains the universal, signed and notarized
+Downloads appear with the first release; the link returns 404 until it is
+published. The ZIP contains the universal, signed and notarized
 application. Expand the ZIP, move CodeCaddie to Applications, and launch that
 copy; automatic updates intentionally refuse to replace an app that is still
 running from a mounted volume, download staging directory, or temporary macOS
