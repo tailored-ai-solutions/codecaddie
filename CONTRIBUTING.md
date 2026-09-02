@@ -109,4 +109,6 @@ responsible for understanding, testing, licensing, and signing off the change.
 
 By adding a `Signed-off-by` line, you certify the Developer Certificate of
 Origin 1.1 at <https://developercertificate.org/>. The line must use a name and
-email you are authorized to contribute under.
+email you are authorized to contribute under. Dependabot's automated
+dependency bumps are the one exemption: they are generated rather than
+contributed, and the maintainer's review and merge stand in for the sign-off.
