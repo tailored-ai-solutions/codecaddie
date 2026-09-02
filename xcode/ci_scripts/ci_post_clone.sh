@@ -6,6 +6,9 @@ set -euo pipefail
 REPOSITORY_PATH="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/../.." && pwd)}"
 TOOLCHAIN_ROOT="$REPOSITORY_PATH/.codecaddie-toolchain"
 NODE_VERSION="24.15.0"
+# Pin the rustup installer by version: the unversioned dist/ URL changes
+# whenever rustup releases, which silently invalidates the checksum below.
+RUSTUP_VERSION="1.29.1"
 export PATH="$TOOLCHAIN_ROOT/node/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 cd "$REPOSITORY_PATH"
 
@@ -26,13 +29,13 @@ case "$(uname -m)" in
     node_arch=arm64
     rustup_arch=aarch64
     node_sha256=372331b969779ab5d15b949884fc6eaf88d5afe87bde8ba881d6400b9100ffc4
-    rustup_sha256=aeb4105778ca1bd3c6b0e75768f581c656633cd51368fa61289b6a71696ac7e1
+    rustup_sha256=ec1b9233e7f72990ecd8e62063fa7f6c3dfc2bec8e97f88bff165f9100ac696a
     ;;
   x86_64)
     node_arch=x64
     rustup_arch=x86_64
     node_sha256=ffd5ee293467927f3ee731a553eb88fd1f48cf74eebc2d74a6babe4af228673b
-    rustup_sha256=33cf85df9142bc6d29cbc62fa5ca1d4c29622cddb55213a4c1a43c457fb9b2d7
+    rustup_sha256=259e2b84274434085163fe8d556510571772cda2aa6d87ca6aa664f57bc644e3
     ;;
   *)
     echo "unsupported Xcode Cloud architecture: $(uname -m)" >&2
@@ -59,7 +62,7 @@ if ! command -v rustup >/dev/null; then
   rustup_init="$setup_root/rustup-init"
   /usr/bin/curl --fail --silent --show-error --location \
     --proto '=https' --proto-redir '=https' \
-    "https://static.rust-lang.org/rustup/dist/$rustup_arch-apple-darwin/rustup-init" \
+    "https://static.rust-lang.org/rustup/archive/$RUSTUP_VERSION/$rustup_arch-apple-darwin/rustup-init" \
     --output "$rustup_init"
   printf '%s  %s\n' "$rustup_sha256" "$rustup_init" | /usr/bin/shasum -a 256 --check
   /bin/chmod 700 "$rustup_init"
