@@ -249,7 +249,13 @@ test("release inventory includes CycloneDX, keyless bundle, and attestations", (
 });
 
 test("publisher creates a complete draft and publishes only beta directly", () => {
-  assert.match(release, /Verify immutable GitHub Releases are enabled/);
+  // The repository setting is admin-only and unreadable by the workflow token,
+  // so immutability is asserted on the release object itself, before and after publication.
+  assert.doesNotMatch(release, /immutable-releases/);
+  assert.doesNotMatch(reconcile, /immutable-releases/);
+  assert.match(release, /jq -er \.immutable candidate-release\.json/);
+  assert.match(release, /isImmutable/);
+  assert.match(reconcile, /jq -er \.immutable requested-release-before-publication\.json/);
   assert.match(release, /gh release create "\$RELEASE_TAG"/);
   assert.match(release, /--draft/);
   assert.match(release, /--target "\$GITHUB_SHA"/);

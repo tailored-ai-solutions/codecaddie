@@ -100,12 +100,6 @@ jobs:
           CODECADDIE_PRIVATE_PATTERN_FILE="$pattern_file" \
             CODECADDIE_REQUIRE_PRIVATE_PATTERNS=1 \
             ./scripts/check-public-safety.sh
-      - name: Verify immutable GitHub Releases are enabled
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          test "$(gh api "repos/$GITHUB_REPOSITORY/immutable-releases" \
-            --jq '.enabled == true or .enforced_by_owner == true')" = true
       - name: Verify exact-commit CI release gates
         env:
           GH_TOKEN: ${{ github.token }}
