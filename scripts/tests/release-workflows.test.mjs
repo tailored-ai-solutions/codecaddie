@@ -370,7 +370,9 @@ test("the Apple team reaches the Xcode archive only through the gitignored local
   assert.match(xcconfig, /^#include\? "XcodeCloud\.local\.xcconfig"$/m);
   assert.doesNotMatch(xcconfig, /^CODECADDIE_APPLE_TEAM_ID\s*=/m);
   assert.match(ignore, /^xcode\/XcodeCloud\.local\.xcconfig$/m);
-  assert.match(bootstrap, /"\$\{CI_TEAM_ID:-\}" =~ \^\[A-Z0-9\]\{10\}\$/);
+  assert.match(bootstrap, /team_id="\$\{CODECADDIE_APPLE_TEAM_ID:-\}"/);
+  assert.match(bootstrap, /"\$team_id" =~ \^\[A-Z0-9\]\{10\}\$/);
+  assert.match(bootstrap, /define CODECADDIE_APPLE_TEAM_ID as a custom environment variable on the Xcode Cloud workflow/);
   assert.match(bootstrap, /CODECADDIE_APPLE_TEAM_ID = %s/);
   assert.match(bootstrap, /xcode\/XcodeCloud\.local\.xcconfig"/);
   assert.match(assembler, /TEAM_ID="\$\{CODECADDIE_APPLE_TEAM_ID:-\$\{CI_TEAM_ID:-\}\}"/);

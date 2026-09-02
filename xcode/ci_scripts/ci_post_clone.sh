@@ -24,17 +24,23 @@ if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
 fi
 [[ "$(git rev-parse --is-shallow-repository)" == "false" ]]
 
-# Xcode Cloud exposes CI_TEAM_ID to custom build scripts only; the archive's
-# run-script phase never sees it. Hand the team to xcodebuild through the
-# optional, gitignored xcconfig that xcode/CodeCaddie.xcconfig includes, so the
-# project's DEVELOPMENT_TEAM and scripts/assemble-macos-xcode.sh both resolve
-# CODECADDIE_APPLE_TEAM_ID without any tracked file carrying the team ID.
+# The Apple team ID never lives in a tracked file. Xcode Cloud's own CI_TEAM_ID
+# is the App Store Connect team UUID, not the ten-character Apple team ID that
+# signing needs, so the workflow's Environment section must define
+# CODECADDIE_APPLE_TEAM_ID (the same name as the GitHub Actions variable).
+# This script hands it to xcodebuild through the optional, gitignored xcconfig
+# that xcode/CodeCaddie.xcconfig includes, so the project's DEVELOPMENT_TEAM and
+# scripts/assemble-macos-xcode.sh both resolve it.
 if [[ -n "${CI_XCODE_CLOUD:-}" ]]; then
-  if [[ ! "${CI_TEAM_ID:-}" =~ ^[A-Z0-9]{10}$ ]]; then
-    echo "Xcode Cloud did not provide a valid CI_TEAM_ID" >&2
+  team_id="${CODECADDIE_APPLE_TEAM_ID:-}"
+  if [[ ! "$team_id" =~ ^[A-Z0-9]{10}$ && "${CI_TEAM_ID:-}" =~ ^[A-Z0-9]{10}$ ]]; then
+    team_id="$CI_TEAM_ID"
+  fi
+  if [[ ! "$team_id" =~ ^[A-Z0-9]{10}$ ]]; then
+    echo "No ten-character Apple team ID: define CODECADDIE_APPLE_TEAM_ID as a custom environment variable on the Xcode Cloud workflow (CI_TEAM_ID is the App Store Connect team UUID)" >&2
     exit 1
   fi
-  printf '// Written by ci_post_clone.sh on Xcode Cloud; gitignored, never tracked.\nCODECADDIE_APPLE_TEAM_ID = %s\n' "$CI_TEAM_ID" \
+  printf '// Written by ci_post_clone.sh on Xcode Cloud; gitignored, never tracked.\nCODECADDIE_APPLE_TEAM_ID = %s\n' "$team_id" \
     > "$REPOSITORY_PATH/xcode/XcodeCloud.local.xcconfig"
   /bin/chmod 600 "$REPOSITORY_PATH/xcode/XcodeCloud.local.xcconfig"
 fi
