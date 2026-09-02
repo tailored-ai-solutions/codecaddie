@@ -33,6 +33,7 @@
 		120000000000000000000003 /* CodeCaddie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodeCaddie.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		120000000000000000000004 /* codecaddie-core */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = codecaddie-core; path = "$(DERIVED_FILE_DIR)/codecaddie-universal/codecaddie-core"; sourceTree = "<absolute>"; };
 		120000000000000000000005 /* codecaddie-updater */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = codecaddie-updater; path = "$(DERIVED_FILE_DIR)/codecaddie-universal/codecaddie-updater"; sourceTree = "<absolute>"; };
+		120000000000000000000006 /* CodeCaddie.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = CodeCaddie.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -49,6 +50,7 @@
 		150000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				120000000000000000000006 /* CodeCaddie.xcconfig */,
 				150000000000000000000002 /* CodeCaddie */,
 				150000000000000000000003 /* Generated Executables */,
 				150000000000000000000004 /* Products */,
@@ -168,6 +170,7 @@
 /* Begin XCBuildConfiguration section */
 		200000000000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 120000000000000000000006 /* CodeCaddie.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
@@ -177,6 +180,7 @@
 		};
 		200000000000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 120000000000000000000006 /* CodeCaddie.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
@@ -191,7 +195,7 @@
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "$(CI_TEAM_ID)";
+				DEVELOPMENT_TEAM = "$(CODECADDIE_APPLE_TEAM_ID)";
 				ENABLE_HARDENED_RUNTIME = YES;
 				EXECUTABLE_NAME = codecaddie;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -213,7 +217,7 @@
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "$(CI_TEAM_ID)";
+				DEVELOPMENT_TEAM = "$(CODECADDIE_APPLE_TEAM_ID)";
 				ENABLE_HARDENED_RUNTIME = YES;
 				EXECUTABLE_NAME = codecaddie;
 				GENERATE_INFOPLIST_FILE = NO;

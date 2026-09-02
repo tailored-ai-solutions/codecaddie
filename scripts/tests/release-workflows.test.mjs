@@ -356,3 +356,22 @@ test("Xcode Cloud bootstrap downloads only versioned, checksum-pinned toolchains
   for (const [, , digest] of checksums) assert.equal(digest.length, 64);
   assert.match(bootstrap, /shasum -a 256 --check/);
 });
+
+test("the Apple team reaches the Xcode archive only through the gitignored local xcconfig", async () => {
+  const project = await readFile(new URL("xcode/CodeCaddie.xcodeproj/project.pbxproj", root), "utf8");
+  const xcconfig = await readFile(new URL("xcode/CodeCaddie.xcconfig", root), "utf8");
+  const bootstrap = await readFile(new URL("xcode/ci_scripts/ci_post_clone.sh", root), "utf8");
+  const assembler = await readFile(new URL("scripts/assemble-macos-xcode.sh", root), "utf8");
+  const ignore = await readFile(new URL(".gitignore", root), "utf8");
+  assert.equal((project.match(/DEVELOPMENT_TEAM = "\$\(CODECADDIE_APPLE_TEAM_ID\)";/g) ?? []).length, 2);
+  assert.doesNotMatch(project, /DEVELOPMENT_TEAM = "?[A-Z0-9]{10}"?;/, "no literal team ID in the project");
+  assert.doesNotMatch(project, /CI_TEAM_ID/, "xcodebuild phases never see CI_TEAM_ID");
+  assert.equal((project.match(/baseConfigurationReference = 120000000000000000000006/g) ?? []).length, 2);
+  assert.match(xcconfig, /^#include\? "XcodeCloud\.local\.xcconfig"$/m);
+  assert.doesNotMatch(xcconfig, /^CODECADDIE_APPLE_TEAM_ID\s*=/m);
+  assert.match(ignore, /^xcode\/XcodeCloud\.local\.xcconfig$/m);
+  assert.match(bootstrap, /"\$\{CI_TEAM_ID:-\}" =~ \^\[A-Z0-9\]\{10\}\$/);
+  assert.match(bootstrap, /CODECADDIE_APPLE_TEAM_ID = %s/);
+  assert.match(bootstrap, /xcode\/XcodeCloud\.local\.xcconfig"/);
+  assert.match(assembler, /TEAM_ID="\$\{CODECADDIE_APPLE_TEAM_ID:-\$\{CI_TEAM_ID:-\}\}"/);
+});

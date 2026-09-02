@@ -40,9 +40,13 @@ if [[ -n "${CI_COMMIT:-}" && "$CI_COMMIT" != "$COMMIT_SHA" ]]; then
   exit 1
 fi
 BUILD_NUMBER="$(node "$ROOT_DIR/scripts/release-build-number.mjs" "$COMMIT_SHA")"
+# xcodebuild exports every build setting to this phase. On Xcode Cloud,
+# CODECADDIE_APPLE_TEAM_ID comes from xcode/XcodeCloud.local.xcconfig, which
+# ci_post_clone.sh writes from CI_TEAM_ID; the run-script phase itself does
+# not receive CI_TEAM_ID, so that fallback only serves local invocations.
 TEAM_ID="${CODECADDIE_APPLE_TEAM_ID:-${CI_TEAM_ID:-}}"
 if [[ -n "${CI_XCODE_PROJECT:-}" && ! "$TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]; then
-  echo "Xcode Cloud did not provide a valid CI_TEAM_ID" >&2
+  echo "Xcode Cloud did not provide a valid Apple team ID (CODECADDIE_APPLE_TEAM_ID length ${#TEAM_ID}); check xcode/ci_scripts/ci_post_clone.sh and xcode/CodeCaddie.xcconfig" >&2
   exit 1
 fi
 
