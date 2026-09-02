@@ -19,9 +19,16 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DEPENDABOT_EMAIL: 49699333+dependabot[bot]@users.noreply.github.com
         run: |
           failed=0
           while read -r commit; do
+            # Dependabot's version bumps are generated, not contributed; the
+            # maintainer's review and squash merge stand in for the sign-off.
+            if [ "$(git show -s --format=%ae "$commit")" = "$DEPENDABOT_EMAIL" ]; then
+              echo "Skipping automated Dependabot commit $commit"
+              continue
+            fi
             if ! git show -s --format=%B "$commit" | git interpret-trailers --parse | grep -qi '^Signed-off-by:'; then
               echo "::error::Commit $commit has no Signed-off-by trailer"
               failed=1

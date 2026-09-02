@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, readFile, stat } from "node:fs/promises";
+import { access, readdir, readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 const root = new URL("../../", import.meta.url);
@@ -229,7 +229,7 @@ test("distribution is GitHub Releases only and starts at the 0.4.0 trust boundar
 });
 
 test("release inventory includes CycloneDX, keyless bundle, and attestations", () => {
-  assert.match(release, /anchore\/sbom-action@e22c389904149dbc22b58101806040fa8d37a610/);
+  assert.match(release, /anchore\/sbom-action@[0-9a-f]{40}/);
   assert.match(release, /format: cyclonedx-json/);
   assert.match(release, /codecaddie-\$\{\{ needs\.prepare\.outputs\.version \}\}\.cdx\.json/);
   const inventory = namedStep(release, "Verify exact candidate inventory");
@@ -245,6 +245,25 @@ test("release inventory includes CycloneDX, keyless bundle, and attestations", (
     "xcode-cloud-provenance.json",
   ]) {
     assert.ok(inventory.includes(name), `candidate inventory is missing ${name}`);
+  }
+});
+
+test("every third-party action is pinned to exactly one commit SHA across all workflows", async () => {
+  const directory = new URL(".github/workflows/", root);
+  const pins = new Map();
+  for (const name of (await readdir(directory)).filter((entry) => entry.endsWith(".yml")).sort()) {
+    const workflow = await readFile(new URL(name, directory), "utf8");
+    for (const [, action, ref] of workflow.matchAll(/^\s+(?:- )?uses:\s*([^@\s]+)@(\S+)\s*$/gm)) {
+      if (action.startsWith("./")) continue;
+      assert.match(ref, /^[0-9a-f]{40}$/, `${name}: ${action} must be pinned to a full commit SHA`);
+      const seen = pins.get(action) ?? new Set();
+      seen.add(ref);
+      pins.set(action, seen);
+    }
+  }
+  assert.ok(pins.size >= 8, "expected the workflows to use third-party actions");
+  for (const [action, refs] of pins) {
+    assert.equal(refs.size, 1, `${action} is pinned to different SHAs: ${[...refs].join(", ")}`);
   }
 });
 

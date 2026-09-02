@@ -31,6 +31,8 @@ test("the required-check list reproduces the protected-main ruleset exactly", ()
   assert.deepEqual(extras, ["DCO sign-off"]);
   assert.match(dco, /name: DCO sign-off/);
   assert.match(dco, /Signed-off-by/);
+  assert.match(dco, /DEPENDABOT_EMAIL: 49699333\+dependabot\[bot\]@users\.noreply\.github\.com/);
+  assert.match(dco, /git show -s --format=%ae "\$commit"\)" = "\$DEPENDABOT_EMAIL"/);
   assert.doesNotMatch(dco, /pull_request_target/);
 });
 

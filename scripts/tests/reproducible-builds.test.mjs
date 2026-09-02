@@ -207,7 +207,7 @@ test("cross-platform CI independently rebuilds and retains comparison evidence",
   assert.ok(release.includes("config/reliability-gates.json"));
   assert.match(cargo, /\[profile\.release\]\nlto = "off"\ncodegen-units = 1\nstrip = "symbols"/);
   const invocations = workflow.match(
-    /uses: dtolnay\/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c(?:\n {8}with:\n(?: {10}[^\n]+\n)*)?/g,
+    /uses: dtolnay\/rust-toolchain@[0-9a-f]{40}(?:\n {8}with:\n(?: {10}[^\n]+\n)*)?/g,
   ) ?? [];
   assert.ok(invocations.length > 0, "expected Rust toolchain actions in CI");
   for (const invocation of invocations) {
@@ -318,7 +318,7 @@ test("Windows reproducibility captures one app build on each isolated runner and
     /INDEPENDENT_RESULT: \$\{\{ needs\.windows-native-independent\.result \}\}[\s\S]*PRIMARY_RESULT" = success/,
   );
   assert.equal(
-    (comparison.match(/actions\/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0/g) || [])
+    (comparison.match(/actions\/download-artifact@[0-9a-f]{40}/g) || [])
       .length,
     2,
   );
