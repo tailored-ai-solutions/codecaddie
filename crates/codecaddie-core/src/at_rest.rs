@@ -11,7 +11,7 @@ use chacha20poly1305::{
     aead::{Aead, KeyInit, Payload},
 };
 use fs2::FileExt;
-use rand::RngCore;
+use rand::{TryRng, rngs::SysRng};
 use serde::{Deserialize, Serialize};
 #[cfg(unix)]
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
@@ -90,7 +90,7 @@ impl ContentCipher {
         let cipher = XChaCha20Poly1305::new_from_slice(self.key.as_ref().as_ref())
             .map_err(|_| anyhow::anyhow!("the local content-encryption key is invalid"))?;
         let mut nonce_bytes = [0_u8; 24];
-        rand::rngs::OsRng.fill_bytes(&mut nonce_bytes);
+        fill_random_bytes(&mut nonce_bytes)?;
         let nonce = XNonce::from(nonce_bytes);
         let ciphertext = cipher
             .encrypt(
@@ -165,6 +165,17 @@ impl ContentCipher {
     }
 }
 
+/// Fills `destination` from the operating-system CSPRNG.
+///
+/// Key, nonce, and salt material must never come from a fallback generator,
+/// so an unavailable system generator is reported as an error instead of
+/// leaving the caller with a zeroed buffer.
+pub(crate) fn fill_random_bytes(destination: &mut [u8]) -> anyhow::Result<()> {
+    SysRng
+        .try_fill_bytes(destination)
+        .map_err(|_| anyhow::anyhow!("the operating-system random number generator is unavailable"))
+}
+
 fn validate_purpose(purpose: &str) -> anyhow::Result<()> {
     if purpose.is_empty()
         || purpose.len() > 128
@@ -190,7 +201,7 @@ fn load_or_create_local_key(root: &Path) -> anyhow::Result<[u8; KEY_BYTES]> {
         return Ok(key);
     }
     let mut generated = [0_u8; KEY_BYTES];
-    rand::rngs::OsRng.fill_bytes(&mut generated);
+    fill_random_bytes(&mut generated)?;
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]

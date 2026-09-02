@@ -531,9 +531,8 @@ fn sigstore_extension(
     encoding: SigstoreExtensionEncoding,
 ) -> Result<String, UpdateError> {
     let extensions = certificate
-        .tbs_certificate
-        .extensions
-        .as_deref()
+        .tbs_certificate()
+        .extensions()
         .ok_or(UpdateError::InvalidSignature)?;
     let mut matching = extensions
         .iter()

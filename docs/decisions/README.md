@@ -40,3 +40,4 @@ boundary.
 | [0009](0009-pstack-adoption-and-pin-procedure.md) | pstack adoption and pin procedure | Accepted | 2026-09-01 |
 | [0010](0010-provider-clis-are-the-only-model-access.md) | Installed provider CLIs are the only model access | Accepted | 2026-09-01 |
 | [0011](0011-codebase-map-and-goal-analysis.md) | Codebase map and goal analysis pipeline | Accepted | 2026-08-23 |
+| [0012](0012-random-material-comes-only-from-the-os-generator.md) | Random key, nonce, and salt material comes only from the fallible operating-system generator | Accepted | 2026-09-01 |

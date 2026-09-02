@@ -10,11 +10,11 @@ runtime and packaging dependencies are:
   lifecycle routing on macOS and Windows and a bounded per-spawn collected
   stdout override used by the framed local-core channel. The Apache-2.0
   license is unchanged.
-- ed25519-dalek 2.2.0 — BSD-3-Clause.
-- blake3 1.8.6 — CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception.
-- chacha20poly1305 0.10.1 and its RustCrypto dependencies — MIT OR
+- ed25519-dalek 3.0.0 — BSD-3-Clause.
+- blake3 1.8.7 — CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception.
+- chacha20poly1305 0.11.0 and its RustCrypto dependencies — MIT OR
   Apache-2.0. Used for authenticated local-state encryption.
-- argon2 0.5.3 and its RustCrypto dependencies — MIT OR Apache-2.0. Used to
+- argon2 0.6.0 and its RustCrypto dependencies — MIT OR Apache-2.0. Used to
   derive portable-backup encryption keys from user-provided passphrases.
 - lopdf 0.44.0 — MIT. Used for bounded, device-local PDF text extraction.
 - quick-xml 0.42.0 — MIT. Used for bounded DOCX/PPTX XML text extraction.

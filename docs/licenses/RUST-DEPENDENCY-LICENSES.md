@@ -428,8 +428,11 @@ Used by:
 ## Apache License 2.0 (Apache-2.0)
 
 Used by:
+- cmov 0.5.4 — https://github.com/RustCrypto/utils
+- ctutils 0.4.2 — https://github.com/RustCrypto/utils
 - encoding_rs 0.8.35 — https://github.com/hsivonen/encoding_rs
 - flagset 0.4.7 — https://github.com/enarx/flagset
+- serdect 0.4.3 — https://github.com/RustCrypto/formats
 - tinyvec 1.12.0 — https://github.com/Lokathor/tinyvec
 - utf8_iter 1.0.4 — https://github.com/hsivonen/utf8_iter
 - zeroize 1.9.0 — https://github.com/RustCrypto/utils
@@ -2532,12 +2535,12 @@ Used by:
 
 Used by:
 - futures-channel 0.3.33 — https://github.com/rust-lang/futures-rs
-- futures-core 0.3.33 — https://github.com/rust-lang/futures-rs
-- futures-io 0.3.33 — https://github.com/rust-lang/futures-rs
-- futures-macro 0.3.33 — https://github.com/rust-lang/futures-rs
-- futures-sink 0.3.33 — https://github.com/rust-lang/futures-rs
-- futures-task 0.3.33 — https://github.com/rust-lang/futures-rs
-- futures-util 0.3.33 — https://github.com/rust-lang/futures-rs
+- futures-core 0.3.34 — https://github.com/rust-lang/futures-rs
+- futures-io 0.3.34 — https://github.com/rust-lang/futures-rs
+- futures-macro 0.3.34 — https://github.com/rust-lang/futures-rs
+- futures-sink 0.3.34 — https://github.com/rust-lang/futures-rs
+- futures-task 0.3.34 — https://github.com/rust-lang/futures-rs
+- futures-util 0.3.34 — https://github.com/rust-lang/futures-rs
 
 ```
                               Apache License
@@ -3587,7 +3590,7 @@ limitations under the License.
 ## Apache License 2.0 (Apache-2.0)
 
 Used by:
-- ed25519 2.2.3 — https://github.com/RustCrypto/signatures/tree/master/ed25519
+- ed25519 3.0.0 — https://github.com/RustCrypto/signatures
 
 ```
                               Apache License
@@ -4429,6 +4432,7 @@ Used by:
 - arrayvec 0.7.8 — https://github.com/bluss/arrayvec
 - atomic-waker 1.1.2 — https://github.com/smol-rs/atomic-waker
 - base64 0.22.1 — https://github.com/marshallpierce/rust-base64
+- base64 0.23.1 — https://github.com/marshallpierce/rust-base64
 - bitflags 2.13.1 — https://github.com/bitflags/bitflags
 - bstr 1.13.1 — https://github.com/BurntSushi/bstr
 - bumpalo 3.20.3 — https://github.com/fitzgen/bumpalo
@@ -4476,7 +4480,7 @@ Used by:
 - unicode-normalization 0.1.25 — https://github.com/unicode-rs/unicode-normalization
 - unicode-properties 0.1.4 — https://github.com/unicode-rs/unicode-properties
 - url 2.5.8 — https://github.com/servo/rust-url
-- uuid 1.24.0 — https://github.com/uuid-rs/uuid
+- uuid 1.26.0 — https://github.com/uuid-rs/uuid
 - wasi 0.11.1+wasi-snapshot-preview1 — https://github.com/bytecodealliance/wasi
 - wasip2 1.0.4+wasi-0.2.12 — https://github.com/bytecodealliance/wasi-rs
 - wasm-bindgen-futures 0.4.76 — https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/futures
@@ -4696,17 +4700,16 @@ limitations under the License.
 
 Used by:
 - aes 0.9.2 — https://github.com/RustCrypto/block-ciphers
-- argon2 0.5.3 — https://github.com/RustCrypto/password-hashes/tree/master/argon2
+- argon2 0.6.0 — https://github.com/RustCrypto/password-hashes
+- base16ct 1.0.0 — https://github.com/RustCrypto/formats
 - base64ct 1.8.3 — https://github.com/RustCrypto/formats
-- blake2 0.10.6 — https://github.com/RustCrypto/hashes
+- blake2 0.11.0 — https://github.com/RustCrypto/hashes
 - block-buffer 0.10.4 — https://github.com/RustCrypto/utils
 - block-buffer 0.12.1 — https://github.com/RustCrypto/utils
 - block-padding 0.4.2 — https://github.com/RustCrypto/utils
 - cbc 0.2.1 — https://github.com/RustCrypto/block-modes
-- chacha20 0.10.1 — https://github.com/RustCrypto/stream-ciphers
-- chacha20 0.9.1 — https://github.com/RustCrypto/stream-ciphers
-- chacha20poly1305 0.10.1 — https://github.com/RustCrypto/AEADs/tree/master/chacha20poly1305
-- cipher 0.4.4 — https://github.com/RustCrypto/traits
+- chacha20 0.10.2 — https://github.com/RustCrypto/stream-ciphers
+- chacha20poly1305 0.11.0 — https://github.com/RustCrypto/AEADs
 - cipher 0.5.2 — https://github.com/RustCrypto/traits
 - cmpv2 0.2.0 — https://github.com/RustCrypto/formats/tree/master/cmpv2
 - const-oid 0.10.2 — https://github.com/RustCrypto/formats
@@ -4718,27 +4721,31 @@ Used by:
 - crypto-common 0.1.7 — https://github.com/RustCrypto/traits
 - crypto-common 0.2.2 — https://github.com/RustCrypto/traits
 - der 0.7.10 — https://github.com/RustCrypto/formats/tree/master/der
+- der 0.8.1 — https://github.com/RustCrypto/formats
 - der_derive 0.7.3 — https://github.com/RustCrypto/formats/tree/master/der/derive
+- der_derive 0.8.0 — https://github.com/RustCrypto/formats
 - digest 0.10.7 — https://github.com/RustCrypto/traits
 - digest 0.11.3 — https://github.com/RustCrypto/traits
 - ecb 0.2.1 — https://github.com/RustCrypto/block-modes
 - hybrid-array 0.4.14 — https://github.com/RustCrypto/hybrid-array
-- inout 0.1.4 — https://github.com/RustCrypto/utils
 - inout 0.2.2 — https://github.com/RustCrypto/utils
 - md-5 0.11.0 — https://github.com/RustCrypto/hashes
-- opaque-debug 0.3.1 — https://github.com/RustCrypto/utils
-- password-hash 0.5.0 — https://github.com/RustCrypto/traits/tree/master/password-hash
+- password-hash 0.6.1 — https://github.com/RustCrypto/traits
 - pem-rfc7468 0.7.0 — https://github.com/RustCrypto/formats/tree/master/pem-rfc7468
-- poly1305 0.8.0 — https://github.com/RustCrypto/universal-hashes
+- phc 0.6.1 — https://github.com/RustCrypto/formats
+- poly1305 0.9.1 — https://github.com/RustCrypto/universal-hashes
 - sha1 0.10.7 — https://github.com/RustCrypto/hashes
 - sha2 0.10.9 — https://github.com/RustCrypto/hashes
 - sha2 0.11.0 — https://github.com/RustCrypto/hashes
 - signature 2.2.0 — https://github.com/RustCrypto/traits/tree/master/signature
+- signature 3.0.0 — https://github.com/RustCrypto/traits
 - spki 0.7.3 — https://github.com/RustCrypto/formats/tree/master/spki
+- spki 0.8.0 — https://github.com/RustCrypto/formats
 - tls_codec 0.4.2 — https://github.com/RustCrypto/formats
 - tls_codec_derive 0.4.2 — https://github.com/RustCrypto/formats
-- universal-hash 0.5.1 — https://github.com/RustCrypto/traits
+- universal-hash 0.6.1 — https://github.com/RustCrypto/traits
 - x509-cert 0.2.5 — https://github.com/RustCrypto/formats/tree/master/x509-cert
+- x509-cert 0.3.0 — https://github.com/RustCrypto/formats
 - x509-tsp 0.1.0 — https://github.com/RustCrypto/formats/tree/master/x509-tsp
 
 ```
@@ -4949,7 +4956,7 @@ limitations under the License.
 ## Apache License 2.0 (Apache-2.0)
 
 Used by:
-- aead 0.5.2 — https://github.com/RustCrypto/traits
+- aead 0.6.1 — https://github.com/RustCrypto/traits
 
 ```
                               Apache License
@@ -5361,7 +5368,6 @@ Used by:
 - getrandom 0.2.17 — https://github.com/rust-random/getrandom
 - getrandom 0.3.4 — https://github.com/rust-random/getrandom
 - getrandom 0.4.3 — https://github.com/rust-random/getrandom
-- rand_chacha 0.3.1 — https://github.com/rust-random/rand
 
 ```
                               Apache License
@@ -5783,12 +5789,12 @@ limitations under the License.
 Used by:
 - anyhow 1.0.104 — https://github.com/dtolnay/anyhow
 - aws-lc-sys 0.44.0 — https://github.com/aws/aws-lc-rs
-- blake3 1.8.6 — https://github.com/BLAKE3-team/BLAKE3
+- blake3 1.8.7 — https://github.com/BLAKE3-team/BLAKE3
 - cms 0.2.3 — https://github.com/RustCrypto/formats/tree/master/cms
 - constant_time_eq 0.4.2 — https://github.com/cesarb/constant_time_eq
 - directories 6.0.0 — https://github.com/soc/directories-rs
 - dirs-sys 0.5.0 — https://github.com/dirs-dev/dirs-sys-rs
-- fiat-crypto 0.2.9 — https://github.com/mit-plv/fiat-crypto
+- fiat-crypto 0.3.0 — https://github.com/mit-plv/fiat-crypto
 - itoa 1.0.18 — https://github.com/dtolnay/itoa
 - jni-macros 0.22.4 — https://github.com/jni-rs/jni-rs
 - jni-sys-macros 0.4.1 — https://github.com/jni-rs/jni-sys
@@ -5804,7 +5810,6 @@ Used by:
 - r-efi 5.3.0 — https://github.com/r-efi/r-efi
 - r-efi 6.0.0 — https://github.com/r-efi/r-efi
 - rand 0.10.2 — https://github.com/rust-random/rand
-- rand 0.8.7 — https://github.com/rust-random/rand
 - rand 0.9.5 — https://github.com/rust-random/rand
 - rand_chacha 0.9.0 — https://github.com/rust-random/rand
 - rustls-platform-verifier-android 0.1.1 — https://github.com/rustls/rustls-platform-verifier
@@ -5829,8 +5834,8 @@ Used by:
 - syn 2.0.119 — https://github.com/dtolnay/syn
 - syn 3.0.3 — https://github.com/dtolnay/syn
 - sync_wrapper 1.0.2 — https://github.com/Actyx/sync_wrapper
-- thiserror-impl 2.0.19 — https://github.com/dtolnay/thiserror
-- thiserror 2.0.19 — https://github.com/dtolnay/thiserror
+- thiserror-impl 2.0.20 — https://github.com/dtolnay/thiserror
+- thiserror 2.0.20 — https://github.com/dtolnay/thiserror
 - time-core 0.1.9 — https://github.com/time-rs/time
 - time-macros 0.2.32 — https://github.com/time-rs/time
 - time 0.3.55 — https://github.com/time-rs/time
@@ -5917,41 +5922,6 @@ limitations under the License.
 
 ```
 
-## BSD 2-Clause &quot;Simplified&quot; License (BSD-2-Clause)
-
-Used by:
-- arrayref 0.3.9 — https://github.com/droundy/arrayref
-
-```
-Copyright (c) 2015 David Roundy &lt;roundyd@physics.oregonstate.edu&gt;
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the
-   distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-&quot;AS IS&quot; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-```
-
 ## BSD 3-Clause &quot;New&quot; or &quot;Revised&quot; License (BSD-3-Clause)
 
 Used by:
@@ -5993,7 +5963,45 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ## BSD 3-Clause &quot;New&quot; or &quot;Revised&quot; License (BSD-3-Clause)
 
 Used by:
-- ed25519-dalek 2.2.0 — https://github.com/dalek-cryptography/curve25519-dalek/tree/main/ed25519-dalek
+- curve25519-dalek 5.0.0 — https://github.com/dalek-cryptography/curve25519-dalek/tree/main/curve25519-dalek
+
+```
+Copyright (c) 2016-2021 isis agora lovecruft. All rights reserved.
+Copyright (c) 2016-2021 Henry de Valence. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+1. Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS
+IS&quot; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+```
+
+## BSD 3-Clause &quot;New&quot; or &quot;Revised&quot; License (BSD-3-Clause)
+
+Used by:
+- ed25519-dalek 3.0.0 — https://github.com/dalek-cryptography/curve25519-dalek/tree/main/ed25519-dalek
 
 ```
 Copyright (c) 2017-2019 isis agora lovecruft. All rights reserved.
@@ -6031,7 +6039,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Used by:
 - aws-lc-sys 0.44.0 — https://github.com/aws/aws-lc-rs
-- curve25519-dalek 4.1.3 — https://github.com/dalek-cryptography/curve25519-dalek/tree/main/curve25519-dalek
 
 ```
 Copyright (c) &lt;year&gt; &lt;owner&gt;.
