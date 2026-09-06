@@ -1,170 +1,115 @@
 # CodeCaddie
 
-CodeCaddie is a local-first desktop application that evaluates whether a
-software system is delivering its approved business goals. Its operating loop
-is **Goals → Evidence → Action → Repeat**.
+**Know whether the software you’re building matches what you intended.**
 
-The application is MIT licensed. It has no hosted application tier, account
-service, billing service, or model API integration.
+AI can help you ship more code. CodeCaddie helps you decide what that code
+actually delivers—and what to work on next. Give it a local Git repository and
+your product goals. It turns an analysis of a committed snapshot into a report
+with goal-by-goal assessments, traceable evidence, and actionable recommendations.
 
-## Trust boundary
+**Goals → Evidence → Action → Repeat**
 
-CodeCaddie's storage, reports, and IPC never contain repository source text —
-reports cite immutable coordinates (paths, line ranges, hashes) from the
-scanned commit, never excerpts. A selected, already-installed Claude, Codex,
-or Grok CLI may process a disposable single-commit snapshot of the repository
-under that provider's own authorization, settings, privacy terms, and
-organizational policy. CodeCaddie never accepts or stores provider
-credentials. Everything it records stays in one data directory on the device.
-Workspace state and signed event history are authenticated and encrypted with
-an owner-only local content-key file inside the same data root; CodeCaddie does
-not call Keychain, Credential Manager, or Secret Service, and the key is never
-sent to an AI provider.
+- **Say what success looks like.** Write goals yourself, or draft them with AI
+  using your product notes and documents. Review and edit before analyzing.
+- **See what supports each goal.** Follow findings to paths and line ranges at
+  the exact analyzed commit. Separate demonstrated gaps from missing evidence.
+- **Give your coding agent a focused next step.** Select recommendations and
+  create an editable prompt to fix the implementation, revise a goal, or audit
+  the analysis.
+- **Check what changed.** Commit the work and analyze again. Earlier reports
+  retain their original evidence so you can compare progress.
 
-If the user explicitly attaches a PDF, PPTX, DOCX, TXT, or Markdown product
-document, that selection authorizes bounded extracted text to be sent to the
-selected provider during goal generation. CodeCaddie stores only the local
-path and metadata/hash reference—not extracted contents—and never fetches the
-optional website field.
+For example: “Customers can find the right document” is a goal; “the search
+function returns a fixed result” is a finding; “implement query-dependent ranking
+and tests” is an action. [Walk through the synthetic example](docs/WORKED-EXAMPLE.md).
 
-## Platform support
+CodeCaddie is useful for builders working with AI coding agents, maintainers
+reviewing unfamiliar code, and teams checking whether implementation matches a
+product brief. Code evidence cannot establish customer adoption, production
+reliability, or revenue. Those need real-world measurement alongside the report.
 
-- **Tier 1** — macOS Apple Silicon and macOS Intel use one signed, notarized
-  universal download from
-  [GitHub Releases](https://github.com/tailored-ai-solutions/codecaddie/releases).
-- **Windows** — coming soon. Source builds are available for contributors, but
-  public Windows downloads wait for open-source code-signing approval.
-- **Linux** — builds from source and the storage layer defines Linux paths,
-  but the desktop app is **unsupported and experimental** until the updater,
-  launch-at-login, packaging, and desktop CI exist for Linux.
+## Try it
 
-See [Platforms](docs/PLATFORMS.md) for the full support statement, per-OS
-data locations, and local storage behavior.
+**Public downloads are not available yet.** Check
+[GitHub Releases](https://github.com/tailored-ai-solutions/codecaddie/releases)
+for publication status. The intended macOS download is one signed, notarized
+universal ZIP for Apple Silicon and Intel. Windows downloads are coming soon;
+Linux desktop source builds are experimental and unsupported.
 
-## Quickstart
-
-New users: follow [Getting started](docs/GETTING-STARTED.md) — install,
-attach a repository, add product notes or documents, generate and approve goals,
-run the first analysis, and read the report. Provider analysis commonly takes
-several minutes and varies with repository size and the installed provider.
-
-Contributors need Git, Node.js 24, pnpm 11.22.0, and Rust 1.95.0 (pinned by
-`rust-toolchain.toml`).
-Native SDK 0.10.1 downloads its pinned Zig toolchain on first use.
+To try the current application from source, install Git, Node.js 24,
+pnpm 11.22.0, and Rust 1.95.0 (pinned in `rust-toolchain.toml`). Native SDK
+0.10.1 downloads its pinned Zig toolchain on first use.
 
 ```sh
+git clone https://github.com/tailored-ai-solutions/codecaddie.git
+cd codecaddie
 pnpm install --frozen-lockfile
 cargo build --workspace --locked
-pnpm dev
+pnpm dev:isolated
 ```
 
-The full local gate is:
+For AI goal generation and analysis, install and authorize **Claude, Codex, or
+Grok CLI** on the same machine. Provider accounts, subscriptions, usage charges,
+and privacy settings are managed by that provider. CodeCaddie has no separate
+account or billing service. Analysis may take several minutes and varies with
+repository size and provider availability.
 
-```sh
-pnpm check
-pnpm build
-```
+Attach a Git repository with at least one commit, add project context, review
+your goals, and choose **Analyze repository**. Analysis uses the current commit;
+uncommitted and untracked changes are not included. Commit work you want reviewed.
 
-Install a release-optimized, visibly labeled developer edition beside any
-stable installation with `pnpm install:local`. See
-[Development](docs/DEVELOPMENT.md) for the complete workflow, isolated data
-directories, and per-platform install destinations.
+**[Getting started](docs/GETTING-STARTED.md)** covers the complete first-report
+journey. **[Development](docs/DEVELOPMENT.md)** covers building, testing, and
+installing a separate developer edition.
 
-## Architecture
+## Your repository, your provider, traceable reports
 
-- `apps/desktop` is a Native SDK 0.10.1 application written in Zig and native
-  markup. It has no browser runtime or WebView.
-- `crates/codecaddie-core` is the bundled Rust process. It owns disposable Git
-  single-commit source snapshots, installed-provider execution, evidence validation,
-  local persistence, schedules, and Word report export.
-- `crates/codecaddie-domain` contains immutable domain events, deterministic
-  projections, role enforcement, goal history, action lifecycle, and scoring.
-- `protocol` defines the bounded length-prefixed JSON contract between Zig and
-  Rust. Provider progress uses sanitized phase messages and repository-relative
-  file counters; stdout is reserved for bounded protocol frames.
+CodeCaddie is an MIT-licensed native desktop app with no hosted application tier.
+Its storage, reports, exports, and IPC contain derived findings and immutable
+evidence coordinates, never repository source excerpts. The selected installed
+provider may process a disposable single-commit repository snapshot under its
+own authorization, settings, privacy terms, and organizational policy.
+CodeCaddie does not accept or store provider credentials.
 
-The desktop binary and Rust core are packaged beside each other. Local
-repository attachments are device-specific and never leave the device as
-absolute paths.
+Attaching a product document authorizes bounded extracted text to be sent to
+the selected provider for goal generation. CodeCaddie stores its local path and
+metadata/hash reference, not extracted contents. The optional website field is
+reference metadata; CodeCaddie does not fetch it.
 
-## Where goals and analysis results are stored
+Goals and reports stay in one local data root, selected by
+`CODECADDIE_DATA_DIR` or the [platform default](docs/PLATFORMS.md), as
+authenticated encrypted state. The owner-only content key lives in that same
+root. This protects individual managed files from casual disclosure; it does
+not protect against a process that can read the entire data directory.
+See [security](docs/SECURITY_MODEL.md) and
+[backup and portability](docs/BACKUP-AND-PORTABILITY.md) for the full boundaries.
 
-All workspace state lives on the device as authenticated encrypted JSON and
-JSONL envelopes in one data directory:
-`CODECADDIE_DATA_DIR` when set, otherwise the per-user platform default
-(for example `~/Library/Application Support/CodeCaddie` on macOS). Files are
-created with owner-only permissions where the operating system supports them.
-The 256-bit content key lives in an owner-only file inside that data directory.
-Existing plaintext active state is atomically migrated by a locked one-time startup
-sweep, including unopened workspace logs, maps, pointers, preferences, and
-agent sessions; normal readers validate decrypted schemas and signatures
-before use. A missing, malformed, or mismatched key leaves ciphertext untouched
-and fails closed. This protects individual managed files from casual disclosure;
-it does not protect against a process that can read the current user's complete
-CodeCaddie data directory.
-Per-OS locations and the directory layout are in
-[Platforms](docs/PLATFORMS.md); backups and machine moves are covered in
-[Backup and portability](docs/BACKUP-AND-PORTABILITY.md).
+## Learn more
 
-## Releases and updates
+| For users | For contributors |
+|---|---|
+| [Getting started](docs/GETTING-STARTED.md) | [Contributing](CONTRIBUTING.md) |
+| [Worked example](docs/WORKED-EXAMPLE.md) | [Development](docs/DEVELOPMENT.md) |
+| [Understanding evidence](docs/EVIDENCE-AND-COMPARISONS.md) | [Architecture](docs/ARCHITECTURE.md) |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | [Module map](docs/MODULE-MAP.md) |
+| [Platforms and storage](docs/PLATFORMS.md) | [Release process](docs/RELEASING.md) |
+| [Backup and portability](docs/BACKUP-AND-PORTABILITY.md) | [Decision records](docs/decisions/README.md) |
 
-`package.json` is the canonical semantic version source. Every protected-main
-build receives a unique `vX.Y.Z+N` release identity, and GitHub Releases holds
-immutable signed installers, checksums, SBOM, provenance, and the signed release
-manifest. The core verifies signed update manifests and fails safely: an
-offline, malformed, tampered, wrong-publisher, wrong-architecture, or downgrade
-update is rejected without blocking normal use. Download and installation
-always require explicit user
-actions. Release mechanics live in [Releasing](docs/RELEASING.md).
-[`codecaddie.ai`](https://codecaddie.ai) is the branded documentation and
-download front door.
+The [documentation index](docs/README.md) includes technical references,
+operational assurance, and support policies. Visit [codecaddie.ai](https://codecaddie.ai)
+for the project website.
 
-## Documentation
+## Built in the open
 
-- [Getting started](docs/GETTING-STARTED.md) — first install to first report.
-- [Platforms](docs/PLATFORMS.md) — support tiers, data locations, local storage.
-- [Troubleshooting](docs/TROUBLESHOOTING.md) — providers, local state,
-  locks, recovery.
-- [Backup and portability](docs/BACKUP-AND-PORTABILITY.md) — recovery
-  exports and machine moves.
-- [Local product measurement](docs/LOCAL-PRODUCT-MEASUREMENT.md) — the
-  metadata-only first-report, repeat-review, and decision-cycle contracts.
-- [Operational assurance](docs/OPERATIONAL-ASSURANCE.md) — support, SLO,
-  source-safe failure, fault-injection, and release-publication evidence.
-- [Local data governance](docs/DATA-GOVERNANCE.md) — consent, retention,
-  deletion, minimization, exception, and local audit controls.
-- [Support matrix](docs/SUPPORT-MATRIX.md) — the exact desktop environments
-  each release supports.
-- [Upgrade compatibility](docs/UPGRADE-COMPATIBILITY.md) — the supported
-  prior-build matrix and upgrade rollback.
-- [Evidence and comparisons](docs/EVIDENCE-AND-COMPARISONS.md) and
-  [Report integrity](docs/REPORT-INTEGRITY.md) — immutable evidence,
-  exact-commit comparison, and the report acceptance gate.
-- [Local reliability](docs/LOCAL-RELIABILITY.md),
-  [Runtime health](docs/RUNTIME-HEALTH.md), and
-  [Reliability and performance](docs/RELIABILITY-AND-PERFORMANCE.md) — on-device
-  reliability measurement and the release performance contract.
-- [Disaster recovery](docs/DISASTER-RECOVERY.md),
-  [Incident response](docs/INCIDENT-RESPONSE.md), and the
-  [incident index](docs/incidents/README.md).
-- [Reproducible builds](docs/REPRODUCIBLE-BUILDS.md) — the double-build gate
-  that separates compilation from signing.
-- [Architecture](docs/ARCHITECTURE.md), [Module map](docs/MODULE-MAP.md),
-  [Decision records](docs/decisions/README.md),
-  [Security model](docs/SECURITY_MODEL.md), [Development](docs/DEVELOPMENT.md),
-  [Releasing](docs/RELEASING.md), [Design QA](docs/DESIGN-QA.md), and
-  [Brand](docs/BRAND.md).
-- [LICENSE](LICENSE), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and
-  [protocol/README.md](protocol/README.md).
+The desktop uses Zig and Native SDK with no browser runtime or WebView. A bundled
+Rust core owns analysis, evidence validation, encrypted local state, and report
+exports. A deterministic domain crate owns goals, scoring, and action history.
+See the [architecture guide](docs/ARCHITECTURE.md) to explore the design.
 
-## Project
+Contributions welcome: follow the [contributor guide](CONTRIBUTING.md),
+[code of conduct](CODE_OF_CONDUCT.md), and [governance](GOVERNANCE.md).
+For help, see [Support](SUPPORT.md); report vulnerabilities through the
+[security policy](SECURITY.md).
 
-- [Contributing](CONTRIBUTING.md) — how to build, test, sign off, and submit
-  changes.
-- [Governance](GOVERNANCE.md) — who decides, and how protected `main` works.
-- [Code of conduct](CODE_OF_CONDUCT.md).
-- [Support](SUPPORT.md) — where to ask questions and report bugs.
-- [Security policy](SECURITY.md) — supported versions and private
-  vulnerability reporting.
-- [Trademarks](TRADEMARKS.md).
-- [Changelog](CHANGELOG.md).
+[MIT license](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md) ·
+[Trademarks](TRADEMARKS.md) · [Changelog](CHANGELOG.md)

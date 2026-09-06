@@ -1,36 +1,42 @@
 # Getting started
 
-This is the five-minute path from installation to your first analysis report.
-Nothing here requires an account: CodeCaddie is a local desktop application,
-and your repository source never enters its storage, reports, or IPC.
+Go from a local repository and product goals to an evidence-backed report, then
+turn its findings into your next coding task. Setup and analysis time depend on
+your machine, repository, and AI provider; the first run may take several minutes.
 
-## 1. Install
+## 1. Install and prepare your provider
 
-**macOS (Apple Silicon or Intel).** Download
-[`CodeCaddie-macOS-universal.zip`](https://github.com/tailored-ai-solutions/codecaddie/releases/latest/download/CodeCaddie-macOS-universal.zip).
-Downloads appear with the first release; the link returns 404 until it is
-published. The ZIP contains the universal, signed and notarized
-application. Expand the ZIP, move CodeCaddie to Applications, and launch that
-copy; automatic updates intentionally refuse to replace an app that is still
-running from a mounted volume, download staging directory, or temporary macOS
-App Translocation path.
+**Public downloads are not available yet.** Check
+[GitHub Releases](https://github.com/tailored-ai-solutions/codecaddie/releases)
+for current availability. Until the first release, use the source-build steps in
+[Development](DEVELOPMENT.md). For a separate test profile, use
+`pnpm dev:isolated` after building the Rust core.
 
-**Windows (x64).** Coming soon. The codebase and developer build remain
-available, but CodeCaddie will not publish a Windows installer until SignPath
-Foundation approves the project for open-source code signing.
+The intended **macOS** release is `CodeCaddie-macOS-universal.zip`, one signed,
+notarized app for Apple Silicon and Intel. Once published, expand it, move the
+app to Applications, and launch that copy. Updates refuse to replace an app
+running from a staging directory, mounted volume, or App Translocation path.
 
-**Linux.** There is no packaged Linux desktop app; Linux use is experimental
-and built from source. See [PLATFORMS.md](PLATFORMS.md) for the current
-status and [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions.
+**Windows** downloads are coming soon, pending open-source code-signing approval.
+**Linux** has no packaged desktop app; source builds are experimental and
+unsupported. See [Platforms](PLATFORMS.md) for the current boundaries.
 
-You also need one AI provider CLI installed and authorized on the same
-machine: `claude`, `codex`, or `grok` on your `PATH`. CodeCaddie never stores
-provider credentials — it uses the selected tool's existing local
-authorization. If none is installed, the app shows an **Install Grok** button.
+For AI generation and analysis, you need one provider CLI installed and
+authorized on this machine: `claude`, `codex`, or `grok` on your `PATH`. Run the
+chosen CLI directly first to finish its setup and confirm access. Its account,
+subscription, usage charges, and organizational permissions apply. CodeCaddie
+uses that authorization without accepting or storing provider credentials.
+Writing goals manually does not remove the provider requirement for analysis.
+
+CodeCaddie has no separate account or billing service. Your selected provider
+may process the repository snapshot under its own privacy settings and terms.
 
 ## 2. Prepare a repository (worked example)
 
-CodeCaddie analyzes a local Git repository with at least one commit. To try
+CodeCaddie analyzes a local Git repository with at least one commit. Analysis
+uses the current committed snapshot: uncommitted edits and untracked files are
+excluded. Commit changes you want reviewed, and check that you are on the intended
+branch before starting. To try
 it without using your own code, copy the demo fixture from this repository
 into a scratch Git repository:
 
@@ -126,12 +132,12 @@ When the "Analysis complete" banner appears, the report shows:
 
 - **Analysis summary** — the overall assessment and progress over time. Each
   goal is rated Missing, Broken, Incomplete, Functional, Strong, or N/A
-  (goal did not exist yet at that commit). CodeCaddie projects the latest 12
+  (goal did not exist yet at that commit). After repeat analyses, CodeCaddie projects the latest 12
   saved analyses and shows four at a time with **Earlier** and **Later**.
 - **Architecture findings** and **Recommendations**.
-- **Local decision funnel** — content-free counts plus time-to-first-report,
-  repeat-review, and decision-cycle summaries derived from signed local event
-  timestamps.
+- **Settings → App diagnostics** — secondary, on-device usage and reliability information
+  about CodeCaddie itself. These numbers do not measure your product’s business
+  outcomes or production reliability.
 - **Recommendation fixes** — select one or more recommendations, then choose
   one of three paths: fix the implementation, revise the goal contract, or
   audit the analysis. Each path produces a deterministic, metadata-only prompt
@@ -142,11 +148,29 @@ When the "Analysis complete" banner appears, the report shows:
   evidence coordinates in the form `path:start-end @ commit`. Reports cite
   immutable coordinates only — never source excerpts.
 
+Start with the recommended actions, then inspect the relevant goal’s checks and
+evidence before deciding what to change. “Could not find evidence” means the
+analysis did not establish the check; it is not proof of a defect. “Could not
+verify” means the citation could not be validated on this device. An
+“Incomplete” assessment should be read with its individual checks.
+
+The coverage percentage is a priority-weighted score of assessed criteria
+(supported = 1, partial = 0.5, unsupported = 0); unverified checks are excluded.
+Read it alongside the unverified count. It is not test coverage, a percentage of
+finished features, or proof that a business outcome has been achieved.
+
+Copy an action prompt into your coding tool, review and test the resulting
+changes, commit them, and analyze again. Reports remain tied to their original
+commits. See the [worked example](WORKED-EXAMPLE.md) for a complete cycle.
+
 **Download Word report** exports the report to your Downloads folder.
 
 ## Where everything is stored
 
-All goals and reports live as readable local files in one data directory on this device —
+All goals and reports live as authenticated encrypted state in one data directory
+on this device. Its owner-only content key lives in the same directory; protect
+and back up the complete data root, not individual encrypted files. This does
+not protect against processes that can read the entire root. For details,
 see [PLATFORMS.md](PLATFORMS.md) for per-OS locations and
 [BACKUP-AND-PORTABILITY.md](BACKUP-AND-PORTABILITY.md) for backups. If
 something misbehaves, start with [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
