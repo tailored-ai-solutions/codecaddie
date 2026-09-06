@@ -70,11 +70,11 @@
     <spacer grow="1"/>
     <if test="{providerAvailable}">
       <button variant="outline" size="sm" on-press="toggle_provider_menu" label="{activeProviderName ++ ' — choose AI provider'}" autofocus="{providerReturnFocus}">{activeProviderName}</button>
-      <button variant="ghost" size="icon" icon="settings" on-press="open_settings" label="Provider settings"/>
     </if>
     <else>
-      <button variant="primary" size="sm" on-press="install_grok">Install Grok</button>
+      <button variant="primary" size="sm" on-press="toggle_provider_menu" autofocus="{providerReturnFocus}">Set up AI provider</button>
     </else>
+    <button variant="ghost" size="icon" icon="settings" on-press="open_settings" label="App settings"/>
     <button variant="ghost" size="icon" icon="info" on-press="open_help" label="Help and documentation"/>
   </row>
   <separator/>
@@ -131,7 +131,8 @@
                   </row>
                   <if test="{repositoryValid}"><row gap="6" cross="center"><icon name="check-circle" width="16" height="16" foreground="success" label=""/><text size="sm">Repository found</text></row></if>
                 </column>
-                <text size="sm" foreground="text_muted" wrap="true">Your selected provider may process the repository snapshot under its privacy terms.</text>
+                <text size="sm" foreground="text_muted" wrap="true">Analysis reads the current Git commit. Commit changes you want included; unsaved and uncommitted edits are excluded.</text>
+                <text size="sm" foreground="text_muted" wrap="true">Use an installed, authorized Claude, Codex, or Grok CLI. Your provider may process the snapshot under its own terms and usage limits; charges may apply.</text>
                 <if test="{hasError}"><alert variant="destructive" text="Repository unavailable"><text wrap="true">{errorMessage}</text></alert></if>
                 <row main="end">
                   <if test="{repositoryValidating}"><button variant="primary" disabled="true">Checking repository...</button></if>
@@ -352,6 +353,7 @@
       <if test="{isReport}">
         <row main="center">
         <column width="{reportContentWidth}" gap="24">
+          <if test="{hasAnalysis}">
           <card padding="12">
             <row gap="12" cross="center">
               <icon name="check-circle" width="18" height="18" foreground="success" label=""/>
@@ -361,14 +363,17 @@
                 <if test="{goalsDirty}"><text size="sm" foreground="text_muted">Analyze again saves your goal edits first.</text></if>
               </column>
               <if test="{latestAnalysisFromAgent}"><badge variant="secondary" foreground="text_muted">Agent session · validated locally</badge></if>
-              <button variant="outline" size="sm" on-press="open_architecture" label="Open the architecture map">Architecture map</button>
-              <button variant="primary" size="sm" on-press="analyze" disabled="{not canAnalyze}">Analyze again</button>
+            </row>
+            <row gap="8" main="end" padding="8">
+              <button variant="ghost" size="sm" on-press="open_architecture" label="Open the architecture map">Architecture map</button>
+              <button variant="outline" size="sm" on-press="analyze" disabled="{not canAnalyze}">Analyze again</button>
               <if test="{reportExporting}"><button variant="outline" size="sm" disabled="true">Preparing Word report...</button></if>
               <else><button variant="outline" size="sm" icon="download" on-press="download_report">Download Word report</button></else>
               <if test="{hasExportedReport}"><button variant="ghost" size="sm" on-press="reveal_report">Show in folder</button></if>
             </row>
           </card>
 
+          </if>
           <row gap="8" cross="center" role="group" label="Report sections">
             <text size="sm" foreground="text_muted">Show</text>
             <if test="{analysisFocus}"><toggle-button size="sm" selected="{showSummarySection}" on-toggle="report_summary" autofocus="true">All sections</toggle-button></if><else><toggle-button size="sm" selected="{showSummarySection}" on-toggle="report_summary">All sections</toggle-button></else>
@@ -377,20 +382,51 @@
             <toggle-button size="sm" selected="{goalDetailsSectionSelected}" on-toggle="report_goal_details">Goal details</toggle-button>
           </row>
 
-          <if test="{showSummarySection}">
-          <column gap="4">
-            <text size="sm" foreground="text_muted"><span mono="true">ANALYSIS SUMMARY</span></text>
-            <text size="heading">Progress over time</text>
-            <text foreground="text_muted" wrap="true">Each analysis classifies how fully the repository supports each goal.</text>
-          </column>
-          </if>
-
           <if test="{hasNotice}"><alert variant="secondary" text="Report"><text wrap="true">{noticeMessage}</text></alert></if>
           <if test="{hasError}"><alert variant="destructive" text="Report unavailable"><text wrap="true">{errorMessage}</text></alert></if>
           <if test="{hasAnalysisWarning}"><alert variant="secondary" text="Report completed with notes"><text wrap="true">{analysisWarning}</text></alert></if>
 
           <if test="{hasAnalysis}">
+            <if test="{hasRecommendationDecisions}">
+              <if test="{showActionsSection}">
+              <separator/>
+              <column gap="12" role="group" label="Recommendations section">
+                <column gap="4">
+                  <text size="sm" foreground="text_muted"><span mono="true">RECOMMENDATIONS</span></text>
+                  <row gap="12" cross="center"><text grow="1" size="heading" wrap="true">What to do next</text><if test="{actionsSectionFocus}"><button size="sm" variant="ghost" on-press="report_summary" autofocus="true" label="Show all sections instead of only recommendations">Show all sections</button></if><else><button size="sm" variant="ghost" on-press="report_summary" label="Show all sections instead of only recommendations">Show all sections</button></else></row>
+                  <text foreground="text_muted" wrap="true">Start with the highest-priority action. Review its evidence, then create a prompt to fix the code, revise the goal, or check the assessment.</text>
+                  <if test="{recommendationSelectionMode}">
+                    <row gap="8" cross="center" role="group" label="Recommendation selection controls">
+                      <toggle-button size="sm" selected="{allRecommendationsSelected}" on-toggle="select_all_recommendations">Select all</toggle-button>
+                      <text size="sm" foreground="text_muted">{selectedRecommendationCountLabel}</text>
+                      <spacer grow="1"/>
+                      <button size="sm" variant="ghost" on-press="cancel_recommendation_selection">Cancel selection</button>
+                      <button size="sm" variant="primary" on-press="create_recommendation_bundle" disabled="{not canCreateRecommendationBundle}">Choose a path</button>
+                    </row>
+                  </if>
+                  <else><row><button size="sm" variant="outline" icon="check" on-press="enter_recommendation_selection" autofocus="{recommendationReturnFocus}">Select recommendations</button></row></else>
+                </column>
+                <column gap="12" role="list" label="Latest recommendations">
+                  <for each="recommendationDecisionViews" as="recommendation">
+                    <card padding="16" role="listitem" label="{recommendation.title}">
+                      <column gap="8">
+                        <row gap="12" cross="center"><badge>{recommendation.rank_label}</badge><text grow="1"><span weight="medium">{recommendation.title}</span></text><badge variant="secondary">{recommendation.evidence_label}</badge><if test="{recommendationSelectionMode}"><toggle-button size="sm" selected="{recommendation.selected}" on-toggle="toggle_recommendation:{recommendation.index}" label="{'Select ' ++ recommendation.title}">Select</toggle-button></if></row>
+                        <text wrap="true">{recommendation.expected_impact}</text>
+                        <text size="sm" wrap="true" foreground="text_muted">{recommendation.rationale}</text>
+                        <if test="{not recommendationSelectionMode}"><row main="end"><button size="sm" variant="outline" on-press="create_recommendation_prompt:{recommendation.index}">Create action prompt</button></row></if>
+                      </column>
+                    </card>
+                  </for>
+                </column>
+              </column>
+              </if>
+            </if>
             <if test="{showSummarySection}">
+            <column gap="8">
+              <text size="heading">What the evidence supports</text>
+              <text wrap="true" foreground="text_muted">Code evidence shows how the project supports your goals. It does not prove customer outcomes or production readiness.</text>
+              <text size="sm" wrap="true" foreground="text_muted">A demonstrated gap, missing evidence, and an unverified check mean different things. Open Goal details to see the verdict and its references.</text>
+            </column>
             <row gap="16" cross="stretch">
               <card grow="1" padding="16">
                 <column gap="8">
@@ -401,6 +437,7 @@
                   <text size="sm" foreground="text_muted" wrap="true">Median across your goals: at least half are at this level or better.</text>
                 </column>
               </card>
+              <if test="{hasTrend}">
               <card grow="1" padding="16">
                 <column gap="8">
                   <text size="sm" foreground="text_muted"><span mono="true">IMPROVEMENT</span></text>
@@ -416,47 +453,18 @@
                   <text size="sm" foreground="text_muted" wrap="true">Scale: 0 = Missing to 4 = Strong. {historyNote}</text>
                 </column>
               </card>
+              </if>
               <if test="{hasCoverage}">
                 <card grow="1" padding="16">
                   <column gap="8">
-                    <text size="sm" foreground="text_muted"><span mono="true">COVERAGE</span></text>
+                    <text size="sm" foreground="text_muted"><span mono="true">WEIGHTED SUPPORT</span></text>
                     <text size="display">{coverageLabel}</text>
-                    <text size="sm" foreground="text_muted" wrap="true">The share of success checks the analysis could assess, weighted by goal priority. Unverified checks lower it.</text>
+                    <text size="sm" foreground="text_muted" wrap="true">Support for assessed checks, weighted by goal priority. Unverified checks are excluded; read their count separately. This is not product completion.</text>
                   </column>
                 </card>
               </if>
             </row>
             <if test="{hasProvenance}"><column gap="4"><row gap="8" cross="center"><text size="sm" foreground="text_muted">Latest analysis of exactly this code:</text><if test="{hasUnverifiedChecks}"><badge accent="warning" accent-foreground="warning_text">{unverifiedChecksLabel}</badge></if></row><text size="sm" foreground="text_muted"><span mono="true">{provenanceLabel}</span></text></column></if>
-
-            <if test="{hasDecisionFunnel}">
-              <card padding="16">
-                <column gap="8">
-                  <text size="sm" foreground="text_muted"><span mono="true">LOCAL DECISION FUNNEL</span></text>
-                  <row gap="16" cross="start">
-                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">TIME TO FIRST REPORT</text><text wrap="true">{firstReportTimeLabel}</text></column>
-                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">REPEAT REVIEW</text><text wrap="true">{repeatReviewLabel}</text></column>
-                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">DECISION CYCLE</text><text wrap="true">{decisionCycleLabel}</text></column>
-                  </row>
-                  <text size="sm" foreground="text_muted" wrap="true">{decisionFunnelCountsLabel}</text>
-                  <text size="sm" foreground="text_muted" wrap="true">Derived from signed event timestamps on this device. CodeCaddie records no source, attachment contents, or goal text in these markers and sends nothing externally.</text>
-                </column>
-              </card>
-            </if>
-
-            <if test="{hasReliabilitySummary}">
-              <card padding="16">
-                <column gap="8">
-                  <text size="sm" foreground="text_muted"><span mono="true">LOCAL RELIABILITY</span></text>
-                  <row gap="16" cross="start">
-                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">AVAILABILITY</text><text wrap="true">{reliabilityAvailabilityLabel}</text></column>
-                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">CRASH-FREE SESSIONS</text><text wrap="true">{reliabilityCrashFreeLabel}</text></column>
-                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">CORE LATENCY</text><text wrap="true">{reliabilityLatencyLabel}</text></column>
-                  </row>
-                  <text size="sm" foreground="text_muted" wrap="true">{reliabilityCountsLabel}</text>
-                  <text size="sm" foreground="text_muted" wrap="true">Native crash markers and provider-bridge failures are measured in signed local records. They contain allowlisted operation and error codes, correlation IDs, version, platform, and timing — never repository source, prompts, attachments, goals, or free-form error text.</text>
-                </column>
-              </card>
-            </if>
 
             <card padding="16">
               <column gap="10">
@@ -533,40 +541,6 @@
                         <text wrap="true">{claim.summary}</text>
                         <if test="{claim.has_relationship}"><text size="sm" wrap="true" foreground="text_muted">{claim.relationship}</text></if>
                         <if test="{claim.has_goals}"><text size="sm" wrap="true" foreground="text_muted">Supports: {claim.goal_titles}</text></if>
-                      </column>
-                    </card>
-                  </for>
-                </column>
-              </column>
-              </if>
-            </if>
-            <if test="{hasRecommendationDecisions}">
-              <if test="{showActionsSection}">
-              <separator/>
-              <column gap="12" role="group" label="Recommendations section">
-                <column gap="4">
-                  <text size="sm" foreground="text_muted"><span mono="true">RECOMMENDATIONS</span></text>
-                  <row gap="12" cross="center"><text grow="1" size="heading" wrap="true">What to do next</text><if test="{actionsSectionFocus}"><button size="sm" variant="ghost" on-press="report_summary" autofocus="true" label="Show all sections instead of only recommendations">Show all sections</button></if><else><button size="sm" variant="ghost" on-press="report_summary" label="Show all sections instead of only recommendations">Show all sections</button></else></row>
-                  <text foreground="text_muted" wrap="true">Ranked, evidence-grounded improvements. Choose whether to fix the implementation, revise the goal contract, or audit the analysis.</text>
-                  <if test="{recommendationSelectionMode}">
-                    <row gap="8" cross="center" role="group" label="Recommendation selection controls">
-                      <toggle-button size="sm" selected="{allRecommendationsSelected}" on-toggle="select_all_recommendations">Select all</toggle-button>
-                      <text size="sm" foreground="text_muted">{selectedRecommendationCountLabel}</text>
-                      <spacer grow="1"/>
-                      <button size="sm" variant="ghost" on-press="cancel_recommendation_selection">Cancel selection</button>
-                      <button size="sm" variant="primary" on-press="create_recommendation_bundle" disabled="{not canCreateRecommendationBundle}">Choose a path</button>
-                    </row>
-                  </if>
-                  <else><row><button size="sm" variant="outline" icon="check" on-press="enter_recommendation_selection" autofocus="{recommendationReturnFocus}">Select recommendations</button></row></else>
-                </column>
-                <column gap="12" role="list" label="Latest recommendations">
-                  <for each="recommendationDecisionViews" as="recommendation">
-                    <card padding="16" role="listitem" label="{recommendation.title}">
-                      <column gap="8">
-                        <row gap="12" cross="center"><badge>{recommendation.rank_label}</badge><text grow="1"><span weight="medium">{recommendation.title}</span></text><badge variant="secondary">{recommendation.evidence_label}</badge><if test="{recommendationSelectionMode}"><toggle-button size="sm" selected="{recommendation.selected}" on-toggle="toggle_recommendation:{recommendation.index}" label="{'Select ' ++ recommendation.title}">Select</toggle-button></if></row>
-                        <text wrap="true">{recommendation.expected_impact}</text>
-                        <text size="sm" wrap="true" foreground="text_muted">{recommendation.rationale}</text>
-                        <if test="{not recommendationSelectionMode}"><row main="end"><button size="sm" variant="outline" on-press="create_recommendation_prompt:{recommendation.index}">Choose a fix</button></row></if>
                       </column>
                     </card>
                   </for>
@@ -983,13 +957,13 @@
     <dialog width="440" padding="24" on-dismiss="close_provider_menu" label="AI provider">
       <column gap="12">
         <row cross="center"><text grow="1" size="heading">AI provider</text><button variant="ghost" size="sm" on-press="close_provider_menu" autofocus="true" label="Close provider menu">Close</button></row>
-        <text size="sm" foreground="text_muted" wrap="true">CodeCaddie uses the selected tool's existing local authorization.</text>
+        <text size="sm" foreground="text_muted" wrap="true">CodeCaddie uses the selected tool's existing local authorization. Installation does not confirm you are signed in. Your provider's usage limits and charges apply.</text>
         <separator/>
         <if test="{grokInstalled}"><row gap="12" cross="center"><column grow="1" gap="2"><text>Grok</text><text size="sm" foreground="text_muted"><span mono="true">{grokVersion}</span></text></column><if test="{grokSelected}"><badge accent="accent" accent-foreground="accent_text">Selected</badge></if><else><button variant="outline" size="sm" on-press="select_grok">Use</button></else></row></if>
         <if test="{codexInstalled}"><row gap="12" cross="center"><column grow="1" gap="2"><text>Codex</text><text size="sm" foreground="text_muted"><span mono="true">{codexVersion}</span></text></column><if test="{codexSelected}"><badge accent="accent" accent-foreground="accent_text">Selected</badge></if><else><button variant="outline" size="sm" on-press="select_codex">Use</button></else></row></if>
         <if test="{claudeInstalled}"><row gap="12" cross="center"><column grow="1" gap="2"><text>Claude</text><text size="sm" foreground="text_muted"><span mono="true">{claudeVersion}</span></text></column><if test="{claudeSelected}"><badge accent="accent" accent-foreground="accent_text">Selected</badge></if><else><button variant="outline" size="sm" on-press="select_claude">Use</button></else></row></if>
         <if test="{providerAvailable}"><separator/><row gap="8"><button variant="ghost" size="sm" on-press="open_settings">Provider settings</button><button variant="ghost" size="sm" on-press="check_providers" label="Check again for newly installed providers">Check again</button></row></if>
-        <else><button variant="primary" on-press="install_grok">Install Grok</button></else>
+        <else><column gap="8"><text wrap="true">Install and sign in to Claude, Codex, or Grok, then check again.</text><row gap="8"><button variant="outline" on-press="open_help">Provider setup guide</button><button variant="primary" on-press="check_providers">Check again</button></row></column></else>
       </column>
     </dialog>
   </if>
@@ -997,7 +971,7 @@
   <if test="{settingsOpen}">
     <dialog width="560" padding="24" on-dismiss="close_settings" label="Settings">
       <column gap="16">
-        <row cross="center"><text grow="1" size="heading">Settings</text><button variant="ghost" size="sm" on-press="close_settings" autofocus="true">Close</button></row>
+        <row cross="center"><text grow="1" size="heading">Settings</text><button variant="ghost" size="sm" on-press="close_settings" autofocus="{not diagnosticsReturnFocus}">Close</button></row>
         <separator/>
         <text><span weight="medium">AI provider</span></text>
         <text size="sm" wrap="true" foreground="text_muted">Choose among installed local tools. CodeCaddie never stores provider credentials.</text>
@@ -1007,9 +981,54 @@
         <row gap="12" cross="center"><text grow="1" size="sm" wrap="true" foreground="text_muted">{updateStatusLabel}</text><button variant="outline" size="sm" on-press="check_for_updates" disabled="{not updateCanCheck}">{updateCheckButtonLabel}</button></row>
         <if test="{updateHasError}"><alert variant="secondary" text="Update status"><text wrap="true">{updateErrorMessage}</text></alert></if>
         <separator/>
+        <row main="space_between" cross="center"><text><span weight="medium">App diagnostics</span></text><button variant="outline" size="sm" on-press="open_diagnostics" autofocus="{diagnosticsReturnFocus}">View diagnostics</button></row>
+        <text size="sm" wrap="true" foreground="text_muted">Local app health and usage measurements, separate from your project assessment.</text>
+        <separator/>
         <text><span weight="medium">Local project data</span></text>
         <text size="sm" wrap="true">CodeCaddie reports and IPC never contain source text. Your selected provider may process the repository snapshot under its authorization, settings, and privacy terms.</text>
         <row main="space_between" cross="center"><button variant="ghost" size="sm" on-press="open_help">Help and documentation</button><button variant="primary" on-press="close_settings">Done</button></row>
+      </column>
+    </dialog>
+  </if>
+
+  <if test="{diagnosticsOpen}">
+    <dialog width="720" padding="24" on-dismiss="close_diagnostics" label="App diagnostics">
+      <column gap="16">
+        <row cross="center"><text grow="1" size="heading">App diagnostics</text><button variant="ghost" on-press="close_diagnostics" autofocus="true">Back to settings</button></row>
+        <text wrap="true" foreground="text_muted">These measurements describe CodeCaddie on this device. They do not measure the quality of your project.</text>
+        <scroll height="400"><column gap="16">
+            <if test="{hasDecisionFunnel}">
+              <card padding="16">
+                <column gap="8">
+                  <text size="sm" foreground="text_muted"><span mono="true">LOCAL DECISION FUNNEL</span></text>
+                  <row gap="16" cross="start">
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">TIME TO FIRST REPORT</text><text wrap="true">{firstReportTimeLabel}</text></column>
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">REPEAT REVIEW</text><text wrap="true">{repeatReviewLabel}</text></column>
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">DECISION CYCLE</text><text wrap="true">{decisionCycleLabel}</text></column>
+                  </row>
+                  <text size="sm" foreground="text_muted" wrap="true">{decisionFunnelCountsLabel}</text>
+                  <text size="sm" foreground="text_muted" wrap="true">Derived from signed event timestamps on this device. CodeCaddie records no source, attachment contents, or goal text in these markers and sends nothing externally.</text>
+                </column>
+              </card>
+            </if>
+
+            <if test="{hasReliabilitySummary}">
+              <card padding="16">
+                <column gap="8">
+                  <text size="sm" foreground="text_muted"><span mono="true">LOCAL RELIABILITY</span></text>
+                  <row gap="16" cross="start">
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">AVAILABILITY</text><text wrap="true">{reliabilityAvailabilityLabel}</text></column>
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">CRASH-FREE SESSIONS</text><text wrap="true">{reliabilityCrashFreeLabel}</text></column>
+                    <column grow="1" gap="2"><text size="sm" foreground="text_muted">CORE LATENCY</text><text wrap="true">{reliabilityLatencyLabel}</text></column>
+                  </row>
+                  <text size="sm" foreground="text_muted" wrap="true">{reliabilityCountsLabel}</text>
+                  <text size="sm" foreground="text_muted" wrap="true">Native crash markers and provider-bridge failures are measured in signed local records. They contain allowlisted operation and error codes, correlation IDs, version, platform, and timing — never repository source, prompts, attachments, goals, or free-form error text.</text>
+                </column>
+              </card>
+            </if>
+
+          <if test="{not hasDecisionFunnel and not hasReliabilitySummary}"><text wrap="true">No diagnostics are available yet. Open a project and complete an analysis to begin.</text></if>
+        </column></scroll>
       </column>
     </dialog>
   </if>

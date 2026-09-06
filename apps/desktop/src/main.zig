@@ -83,7 +83,6 @@ const report_delete_key: u64 = 0x44454c52;
 const map_get_key: u64 = 0x4d415047;
 const help_url_key: u64 = 0x48454c50;
 const reveal_report_key: u64 = 0x52455645;
-const install_grok_key: u64 = 0x47524f4b;
 const provider_preference_key: u64 = 0x50525046;
 const provider_save_key: u64 = 0x50525356;
 const recommendation_prompt_key: u64 = 0x52435054;
@@ -270,7 +269,6 @@ pub const Msg = union(enum) {
     select_claude,
     select_codex,
     select_grok,
-    install_grok,
     toggle_project_menu,
     close_project_menu,
     edit_context,
@@ -279,6 +277,8 @@ pub const Msg = union(enum) {
     confirm_new_project,
     open_settings,
     close_settings,
+    open_diagnostics,
+    close_diagnostics,
     check_for_updates,
     dismiss_update,
     update_and_restart,
@@ -424,7 +424,7 @@ fn handleUpdateChecked(model: *Model, result: native_sdk.EffectExit, fx: *Effect
     model.update_required = status.available and status.required;
     model.update_prompt_open = status.available;
     model.update_status = if (status.available) .available else .current;
-    if (status.available) model.settings_open = false;
+    if (status.available) { model.settings_open = false; model.diagnostics_open = false; model.diagnostics_return_focus = false; }
 }
 
 fn startUpdateDownload(model: *Model, fx: *Effects) void {
@@ -2291,10 +2291,6 @@ pub fn update(model: *Model, msg: Msg, fx: *Effects) void {
         .select_claude => { if (model.claude_installed) { model.provider_choice = .claude; saveProviderPreference(model, fx); } model.provider_menu_open = false; model.provider_return_focus = true; },
         .select_codex => { if (model.codex_installed) { model.provider_choice = .codex; saveProviderPreference(model, fx); } model.provider_menu_open = false; model.provider_return_focus = true; },
         .select_grok => { if (model.grok_installed) { model.provider_choice = .grok; saveProviderPreference(model, fx); } model.provider_menu_open = false; model.provider_return_focus = true; },
-        .install_grok => {
-            const argv = if (builtin.os.tag == .macos) &[_][]const u8{ "/usr/bin/open", "https://docs.x.ai/build/overview" } else &[_][]const u8{ "cmd.exe", "/C", "start", "https://docs.x.ai/build/overview" };
-            fx.spawn(.{ .key = install_grok_key, .argv = argv, .output = .collect });
-        },
         .toggle_project_menu => { model.project_menu_open = !model.project_menu_open; model.provider_menu_open = false; },
         .close_project_menu => model.project_menu_open = false,
         .edit_context => { model.project_menu_open = false; model.context_files_drag_active = false; model.screen = .context; clearFeedback(model); },
@@ -2310,8 +2306,10 @@ pub fn update(model: *Model, msg: Msg, fx: *Effects) void {
         },
         .cancel_new_project => { model.new_project_confirmation_open = false; model.project_menu_open = false; },
         .confirm_new_project => resetProject(model, fx),
-        .open_settings => { model.settings_open = true; model.project_menu_open = false; model.provider_menu_open = false; },
-        .close_settings => model.settings_open = false,
+        .open_settings => { model.diagnostics_open = false; model.diagnostics_return_focus = false; model.settings_open = true; model.project_menu_open = false; model.provider_menu_open = false; },
+        .close_settings => { model.settings_open = false; model.diagnostics_return_focus = false; },
+        .open_diagnostics => { model.settings_open = false; model.diagnostics_open = true; model.diagnostics_return_focus = false; },
+        .close_diagnostics => { model.diagnostics_open = false; model.settings_open = true; model.diagnostics_return_focus = true; },
         .check_for_updates => {
             if (model.update_status == .available) {
                 model.settings_open = false;

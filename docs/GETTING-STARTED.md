@@ -132,8 +132,8 @@ When the "Analysis complete" banner appears, the report shows:
 
 - **Analysis summary** — the overall assessment and progress over time. Each
   goal is rated Missing, Broken, Incomplete, Functional, Strong, or N/A
-  (goal did not exist yet at that commit). After repeat analyses, CodeCaddie projects the latest 12
-  saved analyses and shows four at a time with **Earlier** and **Later**.
+  (goal did not exist yet at that commit). Scroll the history to compare saved
+  analyses and inspect the evidence from each commit.
 - **Architecture findings** and **Recommendations**.
 - **Settings → App diagnostics** — secondary, on-device usage and reliability information
   about CodeCaddie itself. These numbers do not measure your product’s business
@@ -151,10 +151,12 @@ When the "Analysis complete" banner appears, the report shows:
 Start with the recommended actions, then inspect the relevant goal’s checks and
 evidence before deciding what to change. “Could not find evidence” means the
 analysis did not establish the check; it is not proof of a defect. “Could not
-verify” means the citation could not be validated on this device. An
+verify” means the analysis could not establish an answer, including unavailable
+or invalid evidence, an incomplete analysis, or a check that code alone cannot
+answer. Read the rationale. An
 “Incomplete” assessment should be read with its individual checks.
 
-The coverage percentage is a priority-weighted score of assessed criteria
+**Weighted support** (the stored coverage field) is a priority-weighted score of assessed criteria
 (supported = 1, partial = 0.5, unsupported = 0); unverified checks are excluded.
 Read it alongside the unverified count. It is not test coverage, a percentage of
 finished features, or proof that a business outcome has been achieved.

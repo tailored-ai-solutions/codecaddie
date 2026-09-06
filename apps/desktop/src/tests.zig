@@ -28,6 +28,19 @@ fn findByText(widget: canvas.Widget, kind: canvas.WidgetKind, value: []const u8)
     return null;
 }
 
+fn textOrder(widget: canvas.Widget, value: []const u8) ?usize {
+    var offset: usize = 0;
+    return textOrderAt(widget, value, &offset);
+}
+
+fn textOrderAt(widget: canvas.Widget, value: []const u8, offset: *usize) ?usize {
+    const current = offset.*;
+    offset.* += 1;
+    if (widget.kind == .text and std.mem.eql(u8, widget.text, value)) return current;
+    for (widget.children) |child| if (textOrderAt(child, value, offset)) |found| return found;
+    return null;
+}
+
 fn expectByText(widget: canvas.Widget, kind: canvas.WidgetKind, value: []const u8) !canvas.Widget {
     return findByText(widget, kind, value) orelse error.WidgetNotFound;
 }
@@ -979,8 +992,12 @@ test "end-to-end first-report journey proves repository selection commit capture
     try testing.expect(!model.hasError());
     _ = arena_state.reset(.retain_capacity);
     tree = try buildTree(arena_state.allocator(), &model);
-    _ = try expectByText(tree.root, .text, "Progress over time");
+    _ = try expectByText(tree.root, .text, "What the evidence supports");
     _ = try expectByText(tree.root, .text, "Close the remaining gap");
+    try testing.expect(findByText(tree.root, .text, "TREND") == null);
+    try testing.expect(findByText(tree.root, .text, "IMPROVEMENT") == null);
+    try testing.expect(findByText(tree.root, .text, "LOCAL DECISION FUNNEL") == null);
+    try testing.expect(textOrder(tree.root, "What to do next").? < textOrder(tree.root, "What the evidence supports").?);
 }
 
 test "a goal set beyond the spawn stdin budget still stages and saves" {
@@ -1198,7 +1215,7 @@ test "analysis history preserves five levels and N A for later goals" {
     var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena_state.deinit();
     const tree = try buildTree(arena_state.allocator(), &model);
-    _ = try expectByText(tree.root, .text, "Progress over time");
+    _ = try expectByText(tree.root, .text, "What the evidence supports");
     // Heatmap buttons already expose their summaries through accessible
     // labels. Per-cell tooltips multiply anchored surfaces by goals x
     // history columns and can exceed the native renderer's fixed bound.
@@ -1263,7 +1280,12 @@ test "device-local decision funnel renders summaries and records report opens" {
     try testing.expect(std.mem.indexOf(u8, record.stdin[4..], "\"event\":\"report_opened\"") != null);
     try testing.expect(std.mem.indexOf(u8, record.stdin[4..], "goal text") == null);
 
+    const report_tree = try buildTree(arena_state.allocator(), &model);
+    try testing.expect(findByText(report_tree.root, .text, "LOCAL DECISION FUNNEL") == null);
+    main.update(&model, .open_settings, &fx);
+    main.update(&model, .open_diagnostics, &fx);
     const tree = try buildTree(arena_state.allocator(), &model);
+    _ = try expectByRoleLabel(tree.root, .dialog, "App diagnostics");
     _ = try expectByText(tree.root, .text, "LOCAL DECISION FUNNEL");
     _ = try expectByText(tree.root, .text, "4m from workspace creation");
     _ = try expectByText(tree.root, .text, "1h 30m average across 2 cycles");
@@ -1299,7 +1321,12 @@ test "local reliability summary renders and desktop sessions start and end exact
     try testing.expect(model.reliability_session_started);
     try testing.expectEqualStrings("desktop-session", model.runtime_session_id.text());
 
+    const report_tree = try buildTree(arena_state.allocator(), &model);
+    try testing.expect(findByText(report_tree.root, .text, "LOCAL RELIABILITY") == null);
+    main.update(&model, .open_settings, &fx);
+    main.update(&model, .open_diagnostics, &fx);
     const tree = try buildTree(arena_state.allocator(), &model);
+    _ = try expectByRoleLabel(tree.root, .dialog, "App diagnostics");
     _ = try expectByText(tree.root, .text, "LOCAL RELIABILITY");
     _ = try expectByText(tree.root, .text, "75.00% across 12 local operations");
     _ = try expectByText(tree.root, .text, "75.00% across 4 local sessions");
@@ -1634,7 +1661,7 @@ test "primary screens and dialogs pass layout and accessibility sweeps" {
     _ = try expectByRoleLabel(provider_tree.root, .dialog, "AI provider");
     // The dialog floats over the main content now; the report stays mounted
     // behind the scrim instead of being unmounted.
-    _ = try expectByText(provider_tree.root, .text, "Progress over time");
+    _ = try expectByText(provider_tree.root, .text, "No completed analysis yet");
     _ = try expectByRoleLabel(provider_tree.root, .button, "Close provider menu");
     try canvas.expectA11yAuditSweepClean(testing.allocator, provider_tree.root, .{ .min_size = geometry.SizeF.init(960, 700), .default_size = geometry.SizeF.init(1440, 1024) });
     try canvas.expectLayoutAuditSweepClean(testing.allocator, provider_tree.root, .{ .min_size = geometry.SizeF.init(960, 700), .default_size = geometry.SizeF.init(1440, 1024) });
@@ -1949,7 +1976,7 @@ test "the latest report renders architecture findings and ranked actions" {
     _ = try expectByRoleLabel(tree.root, .list, "Latest recommendations");
     _ = try expectByText(tree.root, .text, "Exercise rollback before promotion");
     _ = try expectByText(tree.root, .text, "Reduce customer downtime when a release fails.");
-    _ = try expectByText(tree.root, .button, "Choose a fix");
+    _ = try expectByText(tree.root, .button, "Create action prompt");
 }
 
 test "recommendations create an editable bundled prompt and copy through a private staged request" {
@@ -2451,4 +2478,64 @@ test "goal safety guards: generation confirms, save persists without scanning, e
     _ = arena_state.reset(.retain_capacity);
     tree = try buildTree(arena_state.allocator(), &model);
     _ = try expectByText(tree.root, .text, "No completed analysis yet");
+}
+
+test "app diagnostics stays separate and returns focus to settings" {
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    var fx = Effects.init(testing.allocator);
+    defer fx.deinit();
+    fx.executor = .fake;
+    var model = main.initialModel();
+    makeProject(&model);
+    model.funnel_workspace_creations = 1;
+    model.reliability_operation_samples = 1;
+    main.update(&model, .open_settings, &fx);
+    main.update(&model, .open_diagnostics, &fx);
+    try testing.expect(model.diagnosticsOpen());
+    try testing.expect(!model.settingsOpen());
+    var tree = try buildTree(arena_state.allocator(), &model);
+    _ = try expectByRoleLabel(tree.root, .dialog, "App diagnostics");
+    try canvas.expectA11yAuditSweepClean(testing.allocator, tree.root, .{ .min_size = geometry.SizeF.init(1040, 700), .default_size = geometry.SizeF.init(1440, 900) });
+    try canvas.expectLayoutAuditSweepClean(testing.allocator, tree.root, .{ .min_size = geometry.SizeF.init(1040, 700), .default_size = geometry.SizeF.init(1440, 900) });
+    main.update(&model, .close_diagnostics, &fx);
+    try testing.expect(!model.diagnosticsOpen());
+    try testing.expect(model.settingsOpen());
+    try testing.expect(model.diagnosticsReturnFocus());
+    _ = arena_state.reset(.retain_capacity);
+    tree = try buildTree(arena_state.allocator(), &model);
+    const opener = try expectByText(tree.root, .button, "View diagnostics");
+    try testing.expect(opener.autofocus);
+    main.update(&model, .close_settings, &fx);
+    try testing.expect(!model.settingsOpen());
+    try testing.expect(!model.diagnosticsReturnFocus());
+}
+
+test "provider setup restores focus and settings remains available without a CLI" {
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    var fx = Effects.init(testing.allocator);
+    defer fx.deinit();
+    fx.executor = .fake;
+    var model = main.initialModel();
+    model.claude_installed = false;
+    model.codex_installed = false;
+    model.grok_installed = false;
+    var tree = try buildTree(arena_state.allocator(), &model);
+    _ = try expectByRoleLabel(tree.root, .button, "App settings");
+    main.update(&model, .toggle_provider_menu, &fx);
+    _ = arena_state.reset(.retain_capacity);
+    tree = try buildTree(arena_state.allocator(), &model);
+    _ = try expectByRoleLabel(tree.root, .dialog, "AI provider");
+    _ = try expectByText(tree.root, .button, "Provider setup guide");
+    _ = try expectByText(tree.root, .button, "Check again");
+    try canvas.expectA11yAuditSweepClean(testing.allocator, tree.root, .{ .min_size = geometry.SizeF.init(1040, 700), .default_size = geometry.SizeF.init(1440, 900) });
+    try canvas.expectLayoutAuditSweepClean(testing.allocator, tree.root, .{ .min_size = geometry.SizeF.init(1040, 700), .default_size = geometry.SizeF.init(1440, 900) });
+    main.update(&model, .close_provider_menu, &fx);
+    _ = arena_state.reset(.retain_capacity);
+    tree = try buildTree(arena_state.allocator(), &model);
+    const opener = try expectByText(tree.root, .button, "Set up AI provider");
+    try testing.expect(opener.autofocus);
+    main.update(&model, .open_settings, &fx);
+    try testing.expect(model.settingsOpen());
 }
