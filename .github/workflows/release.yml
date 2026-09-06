@@ -20,8 +20,45 @@ env:
   CANONICAL_REPOSITORY: tailored-ai-solutions/codecaddie
 
 jobs:
+  preflight:
+    name: Validate protected Apple release configuration
+    if: github.repository == 'tailored-ai-solutions/codecaddie' && github.ref == 'refs/heads/main'
+    environment:
+      name: release-apple
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify the pinned repository before accessing configuration
+        env:
+          ACTUAL_REPOSITORY_ID: ${{ github.repository_id }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "$CANONICAL_REPOSITORY"
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(jq -er .sigstore.repository config/release-trust.json)" = "$CANONICAL_REPOSITORY"
+          test "$(jq -er .sigstore.repositoryId config/release-trust.json)" = "$ACTUAL_REPOSITORY_ID"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Fail early with safe configuration diagnostics
+        env:
+          CODECADDIE_APPLE_TEAM_ID: ${{ vars.CODECADDIE_APPLE_TEAM_ID }}
+          CODECADDIE_XCODE_CLOUD_WORKFLOW_ID: ${{ vars.CODECADDIE_XCODE_CLOUD_WORKFLOW_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ vars.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+        run: node scripts/check-release-configuration.mjs
+
   prepare:
     name: Verify canonical protected-main release identity
+    needs: preflight
     if: github.repository == 'tailored-ai-solutions/codecaddie' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -95,7 +132,10 @@ jobs:
           set -euo pipefail
           umask 077
           pattern_file="$RUNNER_TEMP/codecaddie-private-patterns"
-          test -n "$PRIVATE_PATTERNS"
+          if [[ -z "$PRIVATE_PATTERNS" ]]; then
+            echo "::error::Missing repository secret CODECADDIE_PRIVATE_PATTERNS. Restore the private identifier denylist; see docs/RELEASING.md."
+            exit 1
+          fi
           printf '%s\n' "$PRIVATE_PATTERNS" > "$pattern_file"
           CODECADDIE_PRIVATE_PATTERN_FILE="$pattern_file" \
             CODECADDIE_REQUIRE_PRIVATE_PATTERNS=1 \

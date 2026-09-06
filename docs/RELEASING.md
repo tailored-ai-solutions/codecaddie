@@ -114,6 +114,40 @@ protected-`main` commit; they are not a way to choose a different source or
 release identity. Every subsequent protected-`main` push starts its release
 automatically.
 
+## Release configuration preflight
+
+Every canonical `main` release starts with a five-minute, read-only preflight
+inside the protected `release-apple` environment. It runs before the long
+exact-commit CI wait and archive import. Missing or malformed settings produce
+GitHub error annotations that name the field and repair location without
+printing its value. Configure these under **Settings → Environments →
+release-apple**:
+
+| Kind | Name | Required value |
+| --- | --- | --- |
+| Variable | `CODECADDIE_APPLE_TEAM_ID` | Ten-character signing team ID |
+| Variable | `CODECADDIE_XCODE_CLOUD_WORKFLOW_ID` | UUID of the connected archive workflow |
+| Variable | `APP_STORE_CONNECT_KEY_ID` | Individual artifact-reader API key ID |
+| Secret | `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | Base64-encoded unencrypted P-256 `.p8` key |
+
+Use the individual-key setup below to obtain the credential. Keep the secret
+in `release-apple`; never paste it into an issue, workflow input, commit, or
+chat. Retain the environment's protected-main restriction. The preflight has
+no signing, OIDC, artifact upload, or publication authority. It decodes the key
+only in memory, removes the environment entry, and clears decoded bytes.
+
+The repository secret `CODECADDIE_PRIVATE_PATTERNS` is also required by the
+prepare job before the CI wait. Restore the reviewed private denylist if that
+step reports it missing; do not disable the safety scan.
+
+After correcting configuration, rerun the failed release for the same commit.
+Offline preflight success proves presence and format only. The subsequent
+Apple request still verifies access; the archive import still requires the
+exact commit, successful notarization, signatures, and bundle identity. A key
+can be structurally valid but revoked, unauthorized, or paired with the wrong
+key ID. A workflow UUID can be well-formed but refer to the wrong workflow.
+These remain hard failures; do not bypass them to create a download.
+
 ## Apple signing and artifact access
 
 Register `org.codecaddie.desktop` and the macOS CodeCaddie App Store Connect
@@ -369,5 +403,40 @@ Finally:
   a paid upgrade automatically.
 
 Release completion requires the public download, signed local installation,
-live 2001-to-2002 prompt/update/restart, retained user data, public repository
-state, GitHub Latest, and production website to pass together.
+live first-to-next published build prompt/update/restart, retained user data,
+public repository state, GitHub Latest, and production website to pass together.
+
+## Verify what visitors actually receive
+
+The reconciliation workflow already verifies public asset bytes, immutable
+release identity, and forward-only Latest. Passing local tests or completing
+publication alone does not verify the production website or installed UI.
+For every launch change, record a source-free acceptance report with:
+
+- The reviewed commit, release tag/build, GitHub run URL, and actual production
+  website URL. Read GitHub Latest again after publication; overlapping releases
+  may have advanced it to a newer build.
+- A fresh desktop and mobile visit to the deployed website, including the
+  JavaScript-disabled fallback. Follow the macOS download to the canonical
+  GitHub release asset and confirm the displayed version matches its manifest.
+  Confirm unsupported platforms show their availability honestly. If no release
+  exists yet, verify that the site explains this and offers the source guide.
+- On macOS, the public ZIP's SHA-256, verified manifest and Sigstore identity,
+  `codesign`, stapling, and Gatekeeper results. Launch the downloaded build and
+  record the application's displayed version/build and core health-check
+  identity. A source build does not satisfy installer acceptance.
+- A first-report journey against a synthetic committed repository, followed by
+  an update from the preceding public build where available. Use a fresh,
+  owner-only `CODECADDIE_DATA_DIR` outside the checkout for all agent/test runs;
+  preserve test goals and reports across that update. Do not use real app data.
+- Screenshots of onboarding, goals, progress, report recommendations, evidence,
+  and a recoverable error, with OS/architecture, commit/build, window dimensions,
+  appearance, and whether a provider or fixture produced the report. Keep source
+  text, personal paths, and credentials out of all evidence. Mark Linux source
+  screenshots separately from macOS installer results.
+
+If Apple configuration, provider authorization, a graphical session, or a
+published baseline is unavailable, list the corresponding check as unverified.
+Do not describe the release as installed, usable, or upgrade-tested based only
+on a successful CI job. Keep local evidence under the temporary verification
+root and link only sanitized artifacts in the launch report.
