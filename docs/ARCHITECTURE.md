@@ -14,7 +14,7 @@ provider execution, evidence validation, exports, and updates.
 3. The core accepts derived prose and repository-relative coordinates. It
    resolves every coordinate against the original commit, records blob IDs and
    hashes, and rejects source excerpts before creating a report.
-4. The event projection signs and stores the report as readable local JSON. Source text never enters
+4. The event projection signs and stores the report in authenticated encrypted local event history. Source text never enters
    IPC, reports, or exports. The private desktop IPC may return the
    device-local checkout path; reports and exports contain
    repository-relative coordinates only.

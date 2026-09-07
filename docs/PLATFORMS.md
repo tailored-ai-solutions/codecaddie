@@ -1,5 +1,9 @@
 # Platform support
 
+Public downloads are not available yet. The table describes the release targets;
+check [GitHub Releases](https://github.com/tailored-ai-solutions/codecaddie/releases)
+for publication status. Source-build instructions are in [Development](DEVELOPMENT.md).
+
 ## Support tiers
 
 | Tier | Platform | What ships |
@@ -9,7 +13,7 @@
 | Coming soon | Windows x64 | Source-built developer preview only until SignPath Foundation approves open-source signing; no public installer or update artifact |
 | Experimental | Linux | Source builds only. No packaged desktop app. |
 
-Tier 1 platforms receive signed installers on
+When published, Tier 1 releases provide signed downloads on
 [GitHub Releases](https://github.com/tailored-ai-solutions/codecaddie/releases),
 plus credential-free public updater payloads whose manifests use keyless
 Sigstore signing tied to the protected GitHub release workflow. The app never

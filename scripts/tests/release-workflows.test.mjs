@@ -132,6 +132,22 @@ test("Apple import credential is isolated from signing and publication jobs", ()
   assert.doesNotMatch(release, /APPLE_CERTIFICATE_P12|APPLE_NOTARY_PRIVATE_KEY/);
 });
 
+test("protected configuration preflight gates the long CI wait without acquiring publication authority", () => {
+  const preflight = namedJob(release, "preflight");
+  const prepare = namedJob(release, "prepare");
+  assert.match(preflight, /github\.repository == 'tailored-ai-solutions\/codecaddie' && github\.ref == 'refs\/heads\/main'/);
+  assert.match(preflight, /environment:\s*\n\s*name: release-apple/);
+  assert.match(preflight, /timeout-minutes: 5/);
+  assert.match(preflight, /contents: read/);
+  assert.match(preflight, /ACTUAL_REPOSITORY_ID/);
+  assert.match(preflight, /persist-credentials: false/);
+  assert.match(preflight, /node scripts\/check-release-configuration\.mjs/);
+  assert.match(preflight, /secrets\.APP_STORE_CONNECT_PRIVATE_KEY_BASE64/);
+  assert.match(prepare, /needs: preflight/);
+  assert.doesNotMatch(preflight, /: write|upload-artifact|pnpm install|sleep|fetch-xcode-cloud/);
+  assert.doesNotMatch(prepare, /APP_STORE_CONNECT|release-apple/);
+});
+
 test("only the manifest job receives OIDC and it creates both keyless proof systems", () => {
   const manifest = namedJob(release, "manifest");
   const publish = namedJob(release, "publish-release");

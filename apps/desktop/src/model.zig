@@ -555,6 +555,8 @@ pub const Model = struct {
     provider_return_focus: bool = false,
     project_menu_open: bool = false,
     settings_open: bool = false,
+    diagnostics_open: bool = false,
+    diagnostics_return_focus: bool = false,
     new_project_confirmation_open: bool = false,
 
     goals: std.ArrayListUnmanaged(GoalSlot) = .empty,
@@ -750,7 +752,7 @@ pub const Model = struct {
         "repository_validating", "repository_valid", "context_files_picking", "context_files_drag_active",
         "workspace_creating", "workspace_request_is_update", "workspace_retry_ready", "provider_choice", "claude_installed", "codex_installed",
         "grok_installed", "claude_version", "codex_version", "grok_version",
-        "provider_menu_open", "provider_return_focus", "project_menu_open", "settings_open", "new_project_confirmation_open", "goals", "goal_count",
+        "provider_menu_open", "provider_return_focus", "project_menu_open", "settings_open", "diagnostics_open", "diagnostics_return_focus", "new_project_confirmation_open", "goals", "goal_count",
         "selected_goal", "goal_operation", "goal_title_focus", "goals_dirty", "goal_filter", "deleted_goal",
         "deleted_goal_index", "can_undo_delete", "scan_status", "goal_editor_collapsed",
         "generate_confirmation_open", "discard_confirmation_open", "analyze_after_save",
@@ -818,6 +820,8 @@ pub const Model = struct {
     }
     pub fn providerReturnFocus(model: *const Model) bool { return model.provider_return_focus; }
     pub fn projectMenuOpen(model: *const Model) bool { return model.project_menu_open; }
+    pub fn diagnosticsOpen(model: *const Model) bool { return model.diagnostics_open; }
+    pub fn diagnosticsReturnFocus(model: *const Model) bool { return model.diagnostics_return_focus; }
     pub fn settingsOpen(model: *const Model) bool { return model.settings_open; }
     pub fn newProjectConfirmationOpen(model: *const Model) bool { return model.new_project_confirmation_open; }
     pub fn updatePromptOpen(model: *const Model) bool { return model.update_prompt_open; }
