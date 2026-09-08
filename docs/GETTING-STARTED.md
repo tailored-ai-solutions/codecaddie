@@ -6,14 +6,13 @@ your machine, repository, and AI provider; the first run may take several minute
 
 ## 1. Install and prepare your provider
 
-**Public downloads are not available yet.** Check
-[GitHub Releases](https://github.com/tailored-ai-solutions/codecaddie/releases)
-for current availability. Until the first release, use the source-build steps in
-[Development](DEVELOPMENT.md). For a separate test profile, use
+Check [GitHub Releases](https://github.com/tailored-ai-solutions/codecaddie/releases)
+for the latest available download. You can also build from source with the steps
+in [Development](DEVELOPMENT.md). For a separate test profile, use
 `pnpm dev:isolated` after building the Rust core.
 
-The intended **macOS** release is `CodeCaddie-macOS-universal.zip`, one signed,
-notarized app for Apple Silicon and Intel. Once published, expand it, move the
+The **macOS** download is `CodeCaddie-macOS-universal.zip`, one signed,
+notarized app for Apple Silicon and Intel. Expand it, move the
 app to Applications, and launch that copy. Updates refuse to replace an app
 running from a staging directory, mounted volume, or App Translocation path.
 

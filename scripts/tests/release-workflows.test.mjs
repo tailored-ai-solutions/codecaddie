@@ -164,6 +164,21 @@ test("only the manifest job receives OIDC and it creates both keyless proof syst
   assert.match(publish, /attestations: read/);
 });
 
+test("draft visibility authority stays in a protected snapshot job outside the signer", () => {
+  const snapshot = namedJob(release, "snapshot-release");
+  const manifest = namedJob(release, "manifest");
+  const prepare = namedJob(release, "prepare");
+  assert.match(snapshot, /environment:\s*\n\s*name: release-production/);
+  assert.match(snapshot, /contents: write/);
+  assert.doesNotMatch(snapshot, /id-token: write|attestations: write|cosign|gh release (?:create|edit|upload)|APP_STORE_CONNECT/);
+  assert.match(snapshot, /node scripts\/find-github-release\.mjs/);
+  assert.match(manifest, /needs: \[prepare, snapshot-release, sbom, macos\]/);
+  assert.match(manifest, /contents: read/);
+  assert.match(manifest, /name: release-state\s*\n\s*path: existing-release/);
+  assert.doesNotMatch(manifest, /contents: write|find-github-release|gh release download/);
+  assert.doesNotMatch(prepare, /contents: write|gh release create/);
+});
+
 test("manifest verification pins GitHub workflow identity and source commit", () => {
   assert.match(verifier, /verify-blob/);
   for (const option of [
@@ -290,7 +305,8 @@ test("publisher creates a complete draft and publishes only beta directly", () =
   assert.doesNotMatch(reconcile, /immutable-releases/);
   assert.match(release, /jq -er \.immutable candidate-release\.json/);
   assert.match(release, /isImmutable/);
-  assert.match(reconcile, /jq -er \.immutable requested-release-before-publication\.json/);
+  const publication = namedStep(reconcile, "Publish once with the high-water decision in the immutable request");
+  assert.match(publication, /else\s*\n\s*test "\$\(jq -er \.immutable requested-release-before-publication\.json\)" = true/);
   assert.match(release, /gh release create "\$RELEASE_TAG"/);
   assert.match(release, /--draft/);
   assert.match(release, /--target "\$GITHUB_SHA"/);

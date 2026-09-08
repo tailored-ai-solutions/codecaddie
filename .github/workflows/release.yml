@@ -108,6 +108,8 @@ jobs:
           [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?\+[1-9][0-9]*$ ]]
           channel=stable
           if [[ "$version" == *-rc.* ]]; then channel=beta; fi
+          # This read-only preflight checks published identity only. The
+          # protected snapshot and publisher jobs also inspect drafts.
           if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" \
             > existing-release.json 2>existing-release-error.txt; then
             test "$(jq -er .target_commitish existing-release.json)" = "$GITHUB_SHA"
@@ -193,6 +195,52 @@ jobs:
               exit 1
             fi
           done < required-suites.txt
+
+  snapshot-release:
+    name: Read exact-SHA draft state for retry
+    needs: prepare
+    environment:
+      name: release-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Snapshot the exact release and reusable proof bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          mkdir release-state
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" > release-state/release.json
+          if jq -e '. != null' release-state/release.json > /dev/null; then
+            test "$(jq -er .target_commitish release-state/release.json)" = "$GITHUB_SHA"
+            if [[ "$(jq -r .draft release-state/release.json)" == false ]]; then
+              test "$(jq -er .immutable release-state/release.json)" = true
+            fi
+            for name in "codecaddie-$RELEASE_VERSION.cdx.json" manifest.json manifest.sigstore.json release-attestations.jsonl; do
+              if jq -e --arg name "$name" '.assets | any(.name == $name)' release-state/release.json > /dev/null; then
+                gh release download "$RELEASE_TAG" --pattern "$name" --dir release-state
+              fi
+            done
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-state
+          if-no-files-found: error
+          retention-days: 3
+          path: release-state/*
 
   sbom:
     name: Generate exact-commit CycloneDX SBOM without signing authority
@@ -413,7 +461,7 @@ jobs:
 
   manifest:
     name: Build and keyless-sign the immutable update manifest
-    needs: [prepare, sbom, macos]
+    needs: [prepare, snapshot-release, sbom, macos]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -435,6 +483,10 @@ jobs:
         with:
           name: release-sbom
           path: release-candidate
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: release-state
+          path: existing-release
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 24
@@ -444,25 +496,18 @@ jobs:
           cosign-release: v3.1.3
       - name: Reuse the exact published SBOM bytes on retry
         env:
-          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
           mkdir existing-sbom
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-            > existing-sbom/release.json 2>existing-sbom/error.txt; then
+          cp existing-release/release.json existing-sbom/release.json
+          if jq -e '. != null' existing-sbom/release.json > /dev/null; then
             test "$(jq -er .target_commitish existing-sbom/release.json)" = "$GITHUB_SHA"
             if jq -r '.assets[].name' existing-sbom/release.json \
               | grep -Fxq "codecaddie-$RELEASE_VERSION.cdx.json"; then
-              gh release download "$RELEASE_TAG" \
-                --pattern "codecaddie-$RELEASE_VERSION.cdx.json" \
-                --dir existing-sbom
-              cp "existing-sbom/codecaddie-$RELEASE_VERSION.cdx.json" release-candidate/
+              cp "existing-release/codecaddie-$RELEASE_VERSION.cdx.json" release-candidate/
             fi
-          elif ! grep -q '(HTTP 404)' existing-sbom/error.txt; then
-            cat existing-sbom/error.txt >&2
-            exit 1
           fi
           jq -e '.bomFormat == "CycloneDX" and (.specVersion | type == "string")' \
             "release-candidate/codecaddie-$RELEASE_VERSION.cdx.json"
@@ -498,18 +543,14 @@ jobs:
           CODECADDIE_EXPECTED_REPOSITORY_ID: ${{ github.repository_id }}
           CODECADDIE_EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
           CODECADDIE_REQUIRE_COMPLETE_RELEASE: "1"
-          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           set -euo pipefail
           mkdir existing-signature
           release_exists=0
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-            > existing-signature/release.json 2>existing-signature/error.txt; then
+          cp existing-release/release.json existing-signature/release.json
+          if jq -e '. != null' existing-signature/release.json > /dev/null; then
             release_exists=1
-          elif ! grep -q '(HTTP 404)' existing-signature/error.txt; then
-            cat existing-signature/error.txt >&2
-            exit 1
           fi
           manifest_exists=0
           bundle_exists=0
@@ -527,11 +568,11 @@ jobs:
             exit 1
           fi
           if [[ "$manifest_exists" -eq 1 ]]; then
-            gh release download "$RELEASE_TAG" --pattern manifest.json --dir existing-signature
+            cp existing-release/manifest.json existing-signature/
             cmp release-candidate/manifest.json existing-signature/manifest.json
           fi
           if [[ "$bundle_exists" -eq 1 ]]; then
-            gh release download "$RELEASE_TAG" --pattern manifest.sigstore.json --dir existing-signature
+            cp existing-release/manifest.sigstore.json existing-signature/
             cp existing-signature/manifest.sigstore.json release-candidate/
             node scripts/verify-release-manifest.mjs \
               release-candidate/manifest.json \
@@ -573,25 +614,19 @@ jobs:
       - id: attestation_resume
         name: Reuse an existing release-local attestation bundle on retry
         env:
-          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           set -euo pipefail
           reuse=false
           mkdir existing-attestations
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-            > existing-attestations/release.json 2>existing-attestations/error.txt; then
+          cp existing-release/release.json existing-attestations/release.json
+          if jq -e '. != null' existing-attestations/release.json > /dev/null; then
             test "$(jq -er .target_commitish existing-attestations/release.json)" = "$GITHUB_SHA"
             if jq -r '.assets[].name' existing-attestations/release.json \
               | grep -Fxq release-attestations.jsonl; then
-              gh release download "$RELEASE_TAG" \
-                --pattern release-attestations.jsonl \
-                --dir release-candidate
+              cp existing-release/release-attestations.jsonl release-candidate/
               reuse=true
             fi
-          elif ! grep -q '(HTTP 404)' existing-attestations/error.txt; then
-            cat existing-attestations/error.txt >&2
-            exit 1
           fi
           echo "reuse=$reuse" >> "$GITHUB_OUTPUT"
       - name: Attest every immutable release payload
@@ -699,22 +734,18 @@ jobs:
           awk '/^## \['"$RELEASE_VERSION"'\]/{flag=1; next} /^## \[/{flag=0} flag' \
             CHANGELOG.md > release-notes.md
           test -s release-notes.md || printf 'CodeCaddie %s\n' "$RELEASE_TAG" > release-notes.md
-          if ! gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-            > candidate-release.json 2>candidate-release-error.txt; then
-            if ! grep -q '(HTTP 404)' candidate-release-error.txt; then
-              cat candidate-release-error.txt >&2
-              exit 1
-            fi
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" > candidate-release.json
+          if jq -e '. == null' candidate-release.json > /dev/null; then
             gh release create "$RELEASE_TAG" \
               --draft \
               --target "$GITHUB_SHA" \
               --title "CodeCaddie $RELEASE_TAG" \
               --notes-file release-notes.md
-            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > candidate-release.json
+            node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" --required > candidate-release.json
           fi
           test "$(jq -er .target_commitish candidate-release.json)" = "$GITHUB_SHA"
           test "$(jq -er '.assets | map(.name) | length == (unique | length)' candidate-release.json)" = true
-          was_draft="$(jq -er .draft candidate-release.json)"
+          was_draft="$(jq -r .draft candidate-release.json)"
           if [[ "$was_draft" == false ]]; then
             test "$(jq -er .immutable candidate-release.json)" = true
           fi
@@ -743,8 +774,8 @@ jobs:
               gh release upload "$RELEASE_TAG" "release-candidate/$name"
             done < missing-assets.txt
           fi
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-            --jq '.assets[].name' | sort > final-assets.txt
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" --required \
+            | jq -r '.assets[].name' | sort > final-assets.txt
           cmp expected-assets.txt final-assets.txt
       - name: Re-download and verify the complete draft
         env:

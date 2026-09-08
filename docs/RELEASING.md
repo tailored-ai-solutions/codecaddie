@@ -69,7 +69,11 @@ Repository settings, applied in step 4:
    provide on their own pull request. Block force pushes, branch deletion,
    and direct multi-commit pushes.
 2. Set the Actions token default to read-only. Grant writes only to the
-   individual jobs that publish attestations or immutable GitHub Releases.
+   individual jobs that publish attestations or immutable GitHub Releases,
+   and the protected `snapshot-release` job that reads draft retry state.
+   GitHub hides drafts from read-only Actions tokens. The snapshot job reads
+   only release metadata and the fixed set of reusable proof files; it has
+   no OIDC or attestation-writing permission.
    Fork pull requests receive no release environment, secret, or write token;
    do not use `pull_request_target` for build or release code.
 3. Use only standard GitHub-hosted runners. Do not select a paid larger runner
