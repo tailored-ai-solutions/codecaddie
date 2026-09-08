@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,6 +44,10 @@ if (args[0] === "api") {
   }
   state.releases.push({ id: 43, tag_name: args[2], target_commitish: args[args.indexOf("--target") + 1], draft: true, prerelease: false, immutable: false, assets: [] });
   fs.writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
+} else if (args[0] === "release" && args[1] === "download") {
+  const name = args[args.indexOf("--pattern") + 1];
+  if (typeof state.files?.[name] !== "string") { console.error("asset download failed"); process.exit(1); }
+  fs.writeFileSync(require("node:path").join(args[args.indexOf("--dir") + 1], name), state.files[name]);
 } else if (args[0] === "release" && args[1] === "edit") {
   const found = state.releases.find(value => value.tag_name === args[2]);
   if (!found || !found.draft) { console.error("cannot mutate a published release"); process.exit(1); }
@@ -58,6 +62,7 @@ async function fixture(t, state) {
   const directory = await mkdtemp(path.join(tmpdir(), "codecaddie-release-lookup-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   await writeFile(path.join(directory, "gh"), fakeGh, { mode: 0o700 });
+  await writeFile(path.join(directory, "git"), '#!/usr/bin/env node\nprocess.stdout.write(process.env.GITHUB_SHA + "\\n");\n', { mode: 0o700 });
   await writeFile(path.join(directory, "state.json"), JSON.stringify(state));
   await writeFile(path.join(directory, "calls.jsonl"), "");
   await writeFile(path.join(directory, "CHANGELOG.md"), "## [0.4.0]\n\nRelease fixture.\n");
@@ -79,13 +84,14 @@ async function fixture(t, state) {
 }
 
 async function stepRun(workflow, name) {
-  const text = await readFile(path.join(root, ".github/workflows", workflow), "utf8");
-  const start = text.indexOf(`      - name: ${name}\n`);
+  const lines = (await readFile(path.join(root, ".github/workflows", workflow), "utf8")).split("\n");
+  const start = lines.findIndex(line => [`- name: ${name}`, `name: ${name}`].includes(line.trim()));
   assert.ok(start >= 0);
-  const end = text.indexOf("\n      - ", start + 1);
-  const step = text.slice(start, end < 0 ? undefined : end);
-  return step.split("        run: |\n")[1].split("\n")
-    .filter(line => line.startsWith("          ")).map(line => line.slice(10)).join("\n");
+  const run = lines.findIndex((line, index) => index > start && line.trim() === "run: |");
+  assert.ok(run > start);
+  let end = run + 1;
+  while (end < lines.length && (!lines[end].trim() || lines[end].startsWith("          "))) end += 1;
+  return lines.slice(run + 1, end).map(line => line.slice(10)).join("\n");
 }
 
 for (const [name, initial, expectedDraft] of [
@@ -172,5 +178,51 @@ for (const [name, state] of [
     const result = spawnSync(process.execPath, [path.join(root, "scripts/find-github-release.mjs"), "example/project", tag], { cwd: directory, env, encoding: "utf8" });
     assert.notEqual(result.status, 0);
     assert.equal(result.stdout, "");
+  });
+}
+
+test("protected snapshot captures only fixed retry assets and the read-only signer reuses their bytes offline", async (t) => {
+  const files = {
+    "codecaddie-0.4.0.cdx.json": '{"bomFormat":"CycloneDX","specVersion":"1.6","serialNumber":"original"}\n',
+    "manifest.json": "original manifest bytes\n",
+    "manifest.sigstore.json": "original Sigstore bytes\n",
+    "release-attestations.jsonl": "original attestation bytes\n",
+    "CodeCaddie-macOS-universal.zip": "not part of the retry snapshot",
+  };
+  const metadata = release({ assets: Object.keys(files).map((name, index) => ({ id: index + 1, name })) });
+  const { directory, env } = await fixture(t, { releases: [metadata], files });
+  const snapshot = await stepRun("release.yml", "Snapshot the exact release and reusable proof bytes");
+  const captured = spawnSync("bash", ["-c", snapshot], { cwd: directory, env, encoding: "utf8" });
+  assert.equal(captured.status, 0, captured.stderr);
+  const expected = Object.keys(files).filter(name => !name.endsWith(".zip"));
+  assert.deepEqual((await readdir(path.join(directory, "release-state"))).sort(), [...expected, "release.json"].sort());
+  for (const name of expected) assert.equal(await readFile(path.join(directory, "release-state", name), "utf8"), files[name]);
+  assert.deepEqual(JSON.parse(await readFile(path.join(directory, "release-state/release.json"), "utf8")), metadata);
+
+  await rename(path.join(directory, "release-state"), path.join(directory, "existing-release"));
+  await mkdir(path.join(directory, "release-candidate"));
+  await writeFile(env.FAKE_GH_STATE, JSON.stringify({ error: "network access forbidden in signer retry steps" }));
+  const callsBefore = await readFile(env.FAKE_GH_CALLS, "utf8");
+  for (const name of ["Reuse the exact published SBOM bytes on retry", "Reuse an existing release-local attestation bundle on retry"]) {
+    const script = await stepRun("release.yml", name);
+    const result = spawnSync("bash", ["-c", script], { cwd: directory, env, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+  }
+  assert.equal(await readFile(path.join(directory, "release-candidate/codecaddie-0.4.0.cdx.json"), "utf8"), files["codecaddie-0.4.0.cdx.json"]);
+  assert.equal(await readFile(path.join(directory, "release-candidate/release-attestations.jsonl"), "utf8"), files["release-attestations.jsonl"]);
+  assert.equal(await readFile(env.GITHUB_OUTPUT, "utf8"), "reuse=true\n");
+  assert.equal(await readFile(env.FAKE_GH_CALLS, "utf8"), callsBefore);
+});
+
+for (const [name, metadata, files] of [
+  ["another commit", release({ target_commitish: "b".repeat(40) }), {}],
+  ["a mutable published release", release({ draft: false }), {}],
+  ["a listed asset that cannot be downloaded", release({ assets: [{ id: 1, name: "manifest.json" }] }), {}],
+]) {
+  test(`protected snapshot rejects ${name}`, async (t) => {
+    const { directory, env } = await fixture(t, { releases: [metadata], files });
+    const script = await stepRun("release.yml", "Snapshot the exact release and reusable proof bytes");
+    const result = spawnSync("bash", ["-c", script], { cwd: directory, env, encoding: "utf8" });
+    assert.notEqual(result.status, 0);
   });
 }
