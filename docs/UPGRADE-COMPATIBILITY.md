@@ -11,15 +11,21 @@ build number. Only the identities listed in the matrix are supported prior
 versions. An older tag or build that is not listed is outside the supported
 set; release history alone does not silently expand the compatibility promise.
 
-A pending `firstPublicBaseline` is the only permitted empty matrix: until the
-first release is published there is no signed public build that can safely
-participate in the trust chain. The `0.4.0+2001` snapshot commit itself was
-never published because Xcode Cloud was connected after it, so the baseline is
-the first published build. The commit after that release must change
-`firstPublicBaseline.status` to `established`, record that build, and list it
-as the first supported prior build with its immutable source commit SHA. CI
-fails closed if a pending baseline contains an entry or an established baseline
-does not begin with the baseline's exact version and build.
+The first public baseline is established at
+[`0.4.0+2015`](https://github.com/tailored-ai-solutions/codecaddie/releases/tag/v0.4.0+2015),
+built from immutable source commit
+`2ee34e1515b76da58839c935ec1a29cb4c000df1`. It uses
+`codecaddie-local-state-v3` and is the first supported prior build in the matrix.
+The `0.4.0+2001` snapshot was never published and is outside that set.
+CI fails closed if the established matrix is empty or does not begin with the
+baseline's exact version and build.
+
+The supported-prior binary harness builds that source commit and the candidate
+commit from exact Git archives, using canonical release build numbers. It then
+opens state written by each binary with the other binary and checks report
+history, provider settings, immutable evidence, and source privacy after restart.
+This source-build compatibility check complements verification of the signed
+public download; it does not replace release-signature or notarization checks.
 
 The `codecaddie-updater` test named
 `supported_prior_version_upgrade_and_rollback_matrix_preserves_real_encrypted_workspace_state`

@@ -316,6 +316,14 @@ commits wait instead of replacing an older pending release. A retry must prove t
 tag still resolves to the same source SHA and that every existing asset name
 is unique.
 
+A newly created draft may take time to appear in GitHub's release list. The
+publisher checks at most 12 times, with five-second waits between absent
+results. It creates the draft only once. API errors or invalid metadata stop
+the run immediately; persistent absence fails after the bounded wait. Retry
+the failed publisher after resolving the cause. Before the first stable
+release, a recognized Latest 404 is treated as no previous release; other
+lookup failures still block publication.
+
 If an existing manifest, Sigstore bundle, SBOM, attestation bundle, or draft
 asset is valid, the retry downloads and reuses those exact bytes. It compares
 locally reconstructed deterministic material with the existing material and

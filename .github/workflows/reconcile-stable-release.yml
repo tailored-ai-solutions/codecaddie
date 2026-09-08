@@ -253,6 +253,7 @@ jobs:
               cat observed-latest-error.txt >&2
               exit 1
             fi
+            observed_latest=""
           fi
           test "$observed_latest" = "$PREVIOUS_LATEST_TAG"
 

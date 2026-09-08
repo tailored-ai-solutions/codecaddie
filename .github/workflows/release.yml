@@ -741,7 +741,15 @@ jobs:
               --target "$GITHUB_SHA" \
               --title "CodeCaddie $RELEASE_TAG" \
               --notes-file release-notes.md
-            node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" --required > candidate-release.json
+            for attempt in $(seq 1 12); do
+              node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" > candidate-release.json
+              if jq -e '. != null' candidate-release.json > /dev/null; then break; fi
+              if [[ "$attempt" -eq 12 ]]; then
+                echo "Created draft did not become visible after 12 lookups" >&2
+                exit 1
+              fi
+              sleep 5
+            done
           fi
           test "$(jq -er .target_commitish candidate-release.json)" = "$GITHUB_SHA"
           test "$(jq -er '.assets | map(.name) | length == (unique | length)' candidate-release.json)" = true

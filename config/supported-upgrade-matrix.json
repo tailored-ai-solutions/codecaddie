@@ -4,12 +4,19 @@
   "versionIdentity": "semantic-version-plus-build",
   "supportScope": "Only public semantic-version-plus-build identities listed below are supported prior versions; private development builds and unlisted public builds are outside the supported set.",
   "firstPublicBaseline": {
-    "status": "pending",
+    "status": "established",
     "version": "0.4.0",
-    "build": 2001,
-    "reason": "The public snapshot has no earlier public signed build, and the snapshot itself (build 2001) was never published because Xcode Cloud was connected after it. The commit after the first published release must mark this baseline established, replace build with that release's build, and list it with its source commit."
+    "build": 2015,
+    "reason": "The first public signed and notarized release is 0.4.0+2015. Its immutable source commit is listed below, and supported upgrades must preserve its encrypted workspace state."
   },
-  "supportedPriorBuilds": [],
+  "supportedPriorBuilds": [
+    {
+      "version": "0.4.0",
+      "build": 2015,
+      "sourceCommit": "2ee34e1515b76da58839c935ec1a29cb4c000df1",
+      "localStateFormat": "codecaddie-local-state-v3"
+    }
+  ],
   "requiredJourneys": [
     "failed_upgrade_rolls_back",
     "healthy_upgrade_preserves_state",
