@@ -19,12 +19,23 @@ that publication will be mutable.
 
 Use `scripts/find-github-release.mjs` wherever workflow decisions depend on
 whether a draft exists. It reads every page of the authenticated release list
-and returns either the
-single matching REST release object or JSON `null`. Required lookups reject
-absence. API failures, malformed metadata, duplicate tags, and duplicate asset
-names fail closed. A 404 from the list endpoint is an error, never permission
+and returns either the single matching REST release object or JSON `null`.
+Required lookups reject absence. API failures, malformed metadata, duplicate
+tags, and duplicate asset names fail closed. A 404 from the list endpoint is an error, never permission
 to create a release. Existing exact-SHA, asset-byte, signature, and attestation
 checks still apply before reuse or publication.
+
+A successful create request can precede the draft's appearance in the release
+list. After creating a draft once, the publisher makes at most 12 strict list
+lookups, five seconds apart. Only a successful absent result retries. API
+errors, duplicate or malformed metadata, and identity mismatches still fail
+immediately. Exhaustion fails without issuing another create request.
+
+For the first stable release, a Latest 404 means no previous release exists.
+GitHub CLI can write the JSON error body to stdout even with `--jq`. Clear the
+captured value only after recognizing that 404, then compare it with the
+previously verified Latest value. Other API errors and any changed Latest
+value still block publication.
 
 GitHub hides drafts from a `contents: read` Actions token. A separate
 `snapshot-release` job in the protected `release-production` environment uses
