@@ -32,7 +32,13 @@ if (args[0] === "api") {
     if (!state.latest) { console.error("gh: Not Found (HTTP 404)"); process.exit(1); }
     console.log(args.includes("--jq") ? state.latest : JSON.stringify({ tag_name: state.latest }));
   } else if (endpoint.endsWith("/releases?per_page=100")) {
-    console.log(JSON.stringify(state.pages ?? [state.releases]));
+    if (state.created && state.hiddenReads > 0) {
+      state.hiddenReads -= 1;
+      fs.writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
+      console.log("[[]]");
+    } else {
+      console.log(JSON.stringify(state.pages ?? [state.releases]));
+    }
   } else if (endpoint.includes("/releases/tags/")) {
     const found = state.releases.find(value => value.tag_name === endpoint.split("/tags/")[1] && !value.draft);
     if (!found) { console.error("gh: Not Found (HTTP 404)"); process.exit(1); }
@@ -43,6 +49,8 @@ if (args[0] === "api") {
     console.error("release already exists"); process.exit(1);
   }
   state.releases.push({ id: 43, tag_name: args[2], target_commitish: args[args.indexOf("--target") + 1], draft: true, prerelease: false, immutable: false, assets: [] });
+  state.created = true;
+  Object.assign(state, state.afterCreate ?? {});
   fs.writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
 } else if (args[0] === "release" && args[1] === "download") {
   const name = args[args.indexOf("--pattern") + 1];
@@ -65,6 +73,8 @@ async function fixture(t, state) {
   await writeFile(path.join(directory, "git"), '#!/usr/bin/env node\nprocess.stdout.write(process.env.GITHUB_SHA + "\\n");\n', { mode: 0o700 });
   await writeFile(path.join(directory, "state.json"), JSON.stringify(state));
   await writeFile(path.join(directory, "calls.jsonl"), "");
+  await writeFile(path.join(directory, "sleeps.jsonl"), "");
+  await writeFile(path.join(directory, "sleep"), '#!/usr/bin/env node\nrequire("node:fs").appendFileSync(process.env.FAKE_SLEEP_CALLS, JSON.stringify(process.argv.slice(2)) + "\\n");\n', { mode: 0o700 });
   await writeFile(path.join(directory, "CHANGELOG.md"), "## [0.4.0]\n\nRelease fixture.\n");
   await symlink(path.join(root, "scripts"), path.join(directory, "scripts"));
   return {
@@ -74,6 +84,7 @@ async function fixture(t, state) {
       PATH: `${directory}${path.delimiter}${process.env.PATH}`,
       FAKE_GH_STATE: path.join(directory, "state.json"),
       FAKE_GH_CALLS: path.join(directory, "calls.jsonl"),
+      FAKE_SLEEP_CALLS: path.join(directory, "sleeps.jsonl"),
       GITHUB_REPOSITORY: "example/project",
       GITHUB_SHA: sha,
       GITHUB_OUTPUT: path.join(directory, "output.txt"),
@@ -224,5 +235,47 @@ for (const [name, metadata, files] of [
     const script = await stepRun("release.yml", "Snapshot the exact release and reusable proof bytes");
     const result = spawnSync("bash", ["-c", script], { cwd: directory, env, encoding: "utf8" });
     assert.notEqual(result.status, 0);
+  });
+}
+
+for (const [name, hiddenReads, expectedStatus, expectedLookups, expectedSleeps] of [
+  ["waits for the newly created draft to appear", 2, 0, 4, 2],
+  ["stops when the newly created draft stays invisible", 20, 1, 13, 11],
+]) {
+  test(`publication ${name}`, async (t) => {
+    const { directory, env } = await fixture(t, { releases: [], hiddenReads });
+    const script = await stepRun("release.yml", "Create or resume the exact-SHA draft");
+    const result = spawnSync("bash", ["-c", script], { cwd: directory, env, encoding: "utf8" });
+    assert.equal(result.status, expectedStatus, result.stderr);
+    const calls = (await readFile(env.FAKE_GH_CALLS, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+    assert.equal(calls.filter(args => args[0] === "release" && args[1] === "create").length, 1);
+    assert.equal(calls.filter(args => args[0] === "api").length, expectedLookups);
+    const sleeps = (await readFile(env.FAKE_SLEEP_CALLS, "utf8")).trim().split("\n").filter(Boolean).map(line => JSON.parse(line));
+    assert.deepEqual(sleeps, Array.from({ length: expectedSleeps }, () => ["5"]));
+    if (expectedStatus === 0) {
+      assert.equal(await readFile(env.GITHUB_OUTPUT, "utf8"), "was_draft=true\n");
+    } else {
+      assert.match(result.stderr, /Created draft did not become visible after 12 lookups/);
+    }
+  });
+}
+
+for (const [name, afterCreate] of [
+  ["an authorization error", { error: "gh: Forbidden (HTTP 403)" }],
+  ["an API 404", { error: "gh: Not Found (HTTP 404)" }],
+  ["duplicate tags", { releases: [release(), release({ id: 43 })] }],
+  ["malformed metadata", { releases: [release({ draft: "true" })] }],
+  ["another commit", { releases: [release({ target_commitish: "b".repeat(40) })] }],
+  ["a mutable published release", { releases: [release({ draft: false })] }],
+]) {
+  test(`publication does not retry ${name} after creation`, async (t) => {
+    const { directory, env } = await fixture(t, { releases: [], afterCreate });
+    const script = await stepRun("release.yml", "Create or resume the exact-SHA draft");
+    const result = spawnSync("bash", ["-c", script], { cwd: directory, env, encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    const calls = (await readFile(env.FAKE_GH_CALLS, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+    assert.equal(calls.filter(args => args[0] === "release" && args[1] === "create").length, 1);
+    assert.equal(calls.filter(args => args[0] === "api").length, 2);
+    assert.equal(await readFile(env.FAKE_SLEEP_CALLS, "utf8"), "");
   });
 }
