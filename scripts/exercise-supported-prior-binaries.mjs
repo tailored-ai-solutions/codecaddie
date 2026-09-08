@@ -292,7 +292,9 @@ export function exerciseSupportedPriorVersions({
       );
     }
     const currentCommit = git(ROOT, ["rev-parse", "HEAD"]);
-    const currentBuild = Number(git(ROOT, ["rev-list", "--count", "HEAD"]));
+    const currentBuild = Number(command(process.execPath, [
+      join(ROOT, "scripts/release-build-number.mjs"), currentCommit,
+    ], { cwd: ROOT }));
     const currentSource = join(root, "sources", `current-${currentBuild}`);
     extractCommit(currentCommit, currentSource);
     const currentBinary = buildBinary({
