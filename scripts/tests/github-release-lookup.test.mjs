@@ -29,7 +29,12 @@ if (state.error) { console.error(state.error); process.exit(1); }
 if (args[0] === "api") {
   const endpoint = args.find(value => value.startsWith("repos/"));
   if (endpoint.endsWith("/releases/latest")) {
-    if (!state.latest) { console.error("gh: Not Found (HTTP 404)"); process.exit(1); }
+    if (state.latestError || !state.latest) {
+      const status = state.latestError ?? "404";
+      console.log(JSON.stringify({ message: "API failure", status }));
+      console.error("gh: API failure (HTTP " + status + ")");
+      process.exit(1);
+    }
     console.log(args.includes("--jq") ? state.latest : JSON.stringify({ tag_name: state.latest }));
   } else if (endpoint.endsWith("/releases?per_page=100")) {
     if (state.created && state.hiddenReads > 0) {
@@ -160,8 +165,10 @@ test("only a successful complete list can report an optional release absent", as
   assert.notEqual(required.status, 0);
 });
 
-for (const [name, initial, latest, expectedStatus, expectedEdits] of [
-  ["publishes a mutable draft once", release(), null, 0, 1],
+for (const [name, initial, latest, expectedStatus, expectedEdits, publishAsLatest = "1"] of [
+  ["publishes the first stable draft after a Latest 404 body", release(), null, 0, 1],
+  ["advances an existing Latest after verification", release(), "v0.4.0+2000", 0, 1],
+  ["preserves a newer Latest for an older draft", release(), "v0.4.0+2002", 0, 1, "0"],
   ["reuses an immutable published release", release({ draft: false, immutable: true }), tag, 0, 0],
   ["rejects a mutable published release", release({ draft: false }), tag, 1, 0],
 ]) {
@@ -169,7 +176,7 @@ for (const [name, initial, latest, expectedStatus, expectedEdits] of [
     const { directory, env } = await fixture(t, { releases: [initial], latest });
     await writeFile(path.join(directory, "requested-expected-assets.txt"), "");
     env.PREVIOUS_LATEST_TAG = latest ?? "";
-    env.PUBLISH_AS_LATEST = "1";
+    env.PUBLISH_AS_LATEST = publishAsLatest;
     const script = await stepRun("reconcile-stable-release.yml", "Publish once with the high-water decision in the immutable request");
     const result = spawnSync("bash", ["-c", script], { cwd: directory, env, encoding: "utf8" });
     assert.equal(result.status, expectedStatus, result.stderr);
@@ -277,5 +284,25 @@ for (const [name, afterCreate] of [
     assert.equal(calls.filter(args => args[0] === "release" && args[1] === "create").length, 1);
     assert.equal(calls.filter(args => args[0] === "api").length, 2);
     assert.equal(await readFile(env.FAKE_SLEEP_CALLS, "utf8"), "");
+  });
+}
+
+for (const [name, latest, previousLatest, latestError] of [
+  ["Latest changed after verification", "v0.4.0+2002", "v0.4.0+2000"],
+  ["Latest disappeared after verification", null, "v0.4.0+2000"],
+  ["Latest lookup returns an authorization error", null, "", "403"],
+  ["Latest lookup returns a server error", null, "", "500"],
+]) {
+  test(`stable reconciliation stops before mutation when ${name}`, async (t) => {
+    const { directory, env } = await fixture(t, { releases: [release()], latest, latestError });
+    env.PREVIOUS_LATEST_TAG = previousLatest;
+    env.PUBLISH_AS_LATEST = "1";
+    const script = await stepRun("reconcile-stable-release.yml", "Publish once with the high-water decision in the immutable request");
+    const result = spawnSync("bash", ["-c", script], { cwd: directory, env, encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    const calls = (await readFile(env.FAKE_GH_CALLS, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][0], "api");
+    assert.equal(calls[0][1], "repos/example/project/releases/latest");
   });
 }
