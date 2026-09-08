@@ -28,7 +28,10 @@ fs.appendFileSync(process.env.FAKE_GH_CALLS, JSON.stringify(args) + "\\n");
 if (state.error) { console.error(state.error); process.exit(1); }
 if (args[0] === "api") {
   const endpoint = args.find(value => value.startsWith("repos/"));
-  if (endpoint.endsWith("/releases?per_page=100")) {
+  if (endpoint.endsWith("/releases/latest")) {
+    if (!state.latest) { console.error("gh: Not Found (HTTP 404)"); process.exit(1); }
+    console.log(args.includes("--jq") ? state.latest : JSON.stringify({ tag_name: state.latest }));
+  } else if (endpoint.endsWith("/releases?per_page=100")) {
     console.log(JSON.stringify(state.pages ?? [state.releases]));
   } else if (endpoint.includes("/releases/tags/")) {
     const found = state.releases.find(value => value.tag_name === endpoint.split("/tags/")[1] && !value.draft);
@@ -40,6 +43,13 @@ if (args[0] === "api") {
     console.error("release already exists"); process.exit(1);
   }
   state.releases.push({ id: 43, tag_name: args[2], target_commitish: args[args.indexOf("--target") + 1], draft: true, prerelease: false, immutable: false, assets: [] });
+  fs.writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
+} else if (args[0] === "release" && args[1] === "edit") {
+  const found = state.releases.find(value => value.tag_name === args[2]);
+  if (!found || !found.draft) { console.error("cannot mutate a published release"); process.exit(1); }
+  found.draft = false;
+  found.immutable = true;
+  if (args.includes("--latest")) state.latest = found.tag_name;
   fs.writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
 } else { console.error("unexpected gh call"); process.exit(1); }
 `;
@@ -132,3 +142,35 @@ test("only a successful complete list can report an optional release absent", as
   const required = spawnSync(process.execPath, [...args, "--required"], { cwd: directory, env, encoding: "utf8" });
   assert.notEqual(required.status, 0);
 });
+
+for (const [name, initial, latest, expectedStatus, expectedEdits] of [
+  ["publishes a mutable draft once", release(), null, 0, 1],
+  ["reuses an immutable published release", release({ draft: false, immutable: true }), tag, 0, 0],
+  ["rejects a mutable published release", release({ draft: false }), tag, 1, 0],
+]) {
+  test(`stable reconciliation ${name}`, async (t) => {
+    const { directory, env } = await fixture(t, { releases: [initial], latest });
+    await writeFile(path.join(directory, "requested-expected-assets.txt"), "");
+    env.PREVIOUS_LATEST_TAG = latest ?? "";
+    env.PUBLISH_AS_LATEST = "1";
+    const script = await stepRun("reconcile-stable-release.yml", "Publish once with the high-water decision in the immutable request");
+    const result = spawnSync("bash", ["-c", script], { cwd: directory, env, encoding: "utf8" });
+    assert.equal(result.status, expectedStatus, result.stderr);
+    const calls = (await readFile(env.FAKE_GH_CALLS, "utf8")).trim().split("\n").map(line => JSON.parse(line));
+    assert.equal(calls.filter(args => args[0] === "release" && args[1] === "edit").length, expectedEdits);
+  });
+}
+
+for (const [name, state] of [
+  ["missing pagination envelope", { pages: [release()] }],
+  ["malformed page", { pages: [[release()], null] }],
+  ["missing draft flag", { releases: [release({ draft: undefined })] }],
+  ["nonboolean draft flag", { releases: [release({ draft: "false" })] }],
+]) {
+  test(`lookup rejects ${name}`, async (t) => {
+    const { directory, env } = await fixture(t, state);
+    const result = spawnSync(process.execPath, [path.join(root, "scripts/find-github-release.mjs"), "example/project", tag], { cwd: directory, env, encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stdout, "");
+  });
+}

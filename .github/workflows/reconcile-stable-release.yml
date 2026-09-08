@@ -71,12 +71,12 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" --required \
             > requested-release.json
           test "$(jq -er .target_commitish requested-release.json)" = "$GITHUB_SHA"
-          test "$(jq -er .prerelease requested-release.json)" = false
+          test "$(jq -er '.prerelease == false' requested-release.json)" = true
           test "$(jq -er '.assets | map(.name) | length == (unique | length)' requested-release.json)" = true
-          requested_is_draft="$(jq -er .draft requested-release.json)"
+          requested_is_draft="$(jq -r .draft requested-release.json)"
           if [[ "$requested_is_draft" == false ]]; then
             test "$(jq -er .immutable requested-release.json)" = true
             requested_tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
@@ -181,7 +181,7 @@ jobs:
           publish_as_latest=1
           if [[ -n "$highest_tag" ]]; then
             test "$previous_latest_tag" = "$highest_tag"
-            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$highest_tag" \
+            node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$highest_tag" --required \
               > highest-release.json
             test "$(jq -er '.draft == false and .prerelease == false and .immutable == true' highest-release.json)" = true
             test "$(jq -er '.assets | map(.name) | length == (unique | length)' highest-release.json)" = true
@@ -256,9 +256,8 @@ jobs:
           fi
           test "$observed_latest" = "$PREVIOUS_LATEST_TAG"
 
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" --required \
             > requested-release-before-publication.json
-          test "$(jq -er .immutable requested-release-before-publication.json)" = true
           test "$(jq -er .target_commitish requested-release-before-publication.json)" = "$GITHUB_SHA"
           test "$(jq -er '.assets | map(.name) | length == (unique | length)' requested-release-before-publication.json)" = true
           jq -r '.assets[].name' requested-release-before-publication.json \
@@ -287,7 +286,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > final-release.json
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" --required > final-release.json
           test "$(jq -er '.draft == false and .prerelease == false and .immutable == true' final-release.json)" = true
           test "$(jq -er .target_commitish final-release.json)" = "$GITHUB_SHA"
           final_tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" \

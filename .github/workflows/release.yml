@@ -108,12 +108,9 @@ jobs:
           [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?\+[1-9][0-9]*$ ]]
           channel=stable
           if [[ "$version" == *-rc.* ]]; then channel=beta; fi
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" \
-            > existing-release.json 2>existing-release-error.txt; then
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$tag" > existing-release.json
+          if jq -e '. != null' existing-release.json > /dev/null; then
             test "$(jq -er .target_commitish existing-release.json)" = "$GITHUB_SHA"
-          elif ! grep -q '(HTTP 404)' existing-release-error.txt; then
-            cat existing-release-error.txt >&2
-            exit 1
           fi
           if git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then
             test "$(git rev-list -n 1 "$tag")" = "$GITHUB_SHA"
@@ -450,8 +447,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir existing-sbom
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-            > existing-sbom/release.json 2>existing-sbom/error.txt; then
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" > existing-sbom/release.json
+          if jq -e '. != null' existing-sbom/release.json > /dev/null; then
             test "$(jq -er .target_commitish existing-sbom/release.json)" = "$GITHUB_SHA"
             if jq -r '.assets[].name' existing-sbom/release.json \
               | grep -Fxq "codecaddie-$RELEASE_VERSION.cdx.json"; then
@@ -460,9 +457,6 @@ jobs:
                 --dir existing-sbom
               cp "existing-sbom/codecaddie-$RELEASE_VERSION.cdx.json" release-candidate/
             fi
-          elif ! grep -q '(HTTP 404)' existing-sbom/error.txt; then
-            cat existing-sbom/error.txt >&2
-            exit 1
           fi
           jq -e '.bomFormat == "CycloneDX" and (.specVersion | type == "string")' \
             "release-candidate/codecaddie-$RELEASE_VERSION.cdx.json"
@@ -504,12 +498,9 @@ jobs:
           set -euo pipefail
           mkdir existing-signature
           release_exists=0
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-            > existing-signature/release.json 2>existing-signature/error.txt; then
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" > existing-signature/release.json
+          if jq -e '. != null' existing-signature/release.json > /dev/null; then
             release_exists=1
-          elif ! grep -q '(HTTP 404)' existing-signature/error.txt; then
-            cat existing-signature/error.txt >&2
-            exit 1
           fi
           manifest_exists=0
           bundle_exists=0
@@ -579,8 +570,8 @@ jobs:
           set -euo pipefail
           reuse=false
           mkdir existing-attestations
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-            > existing-attestations/release.json 2>existing-attestations/error.txt; then
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" > existing-attestations/release.json
+          if jq -e '. != null' existing-attestations/release.json > /dev/null; then
             test "$(jq -er .target_commitish existing-attestations/release.json)" = "$GITHUB_SHA"
             if jq -r '.assets[].name' existing-attestations/release.json \
               | grep -Fxq release-attestations.jsonl; then
@@ -589,9 +580,6 @@ jobs:
                 --dir release-candidate
               reuse=true
             fi
-          elif ! grep -q '(HTTP 404)' existing-attestations/error.txt; then
-            cat existing-attestations/error.txt >&2
-            exit 1
           fi
           echo "reuse=$reuse" >> "$GITHUB_OUTPUT"
       - name: Attest every immutable release payload
@@ -699,22 +687,18 @@ jobs:
           awk '/^## \['"$RELEASE_VERSION"'\]/{flag=1; next} /^## \[/{flag=0} flag' \
             CHANGELOG.md > release-notes.md
           test -s release-notes.md || printf 'CodeCaddie %s\n' "$RELEASE_TAG" > release-notes.md
-          if ! gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-            > candidate-release.json 2>candidate-release-error.txt; then
-            if ! grep -q '(HTTP 404)' candidate-release-error.txt; then
-              cat candidate-release-error.txt >&2
-              exit 1
-            fi
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" > candidate-release.json
+          if jq -e '. == null' candidate-release.json > /dev/null; then
             gh release create "$RELEASE_TAG" \
               --draft \
               --target "$GITHUB_SHA" \
               --title "CodeCaddie $RELEASE_TAG" \
               --notes-file release-notes.md
-            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > candidate-release.json
+            node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" --required > candidate-release.json
           fi
           test "$(jq -er .target_commitish candidate-release.json)" = "$GITHUB_SHA"
           test "$(jq -er '.assets | map(.name) | length == (unique | length)' candidate-release.json)" = true
-          was_draft="$(jq -er .draft candidate-release.json)"
+          was_draft="$(jq -r .draft candidate-release.json)"
           if [[ "$was_draft" == false ]]; then
             test "$(jq -er .immutable candidate-release.json)" = true
           fi
@@ -743,8 +727,8 @@ jobs:
               gh release upload "$RELEASE_TAG" "release-candidate/$name"
             done < missing-assets.txt
           fi
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
-            --jq '.assets[].name' | sort > final-assets.txt
+          node scripts/find-github-release.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" --required \
+            | jq -r '.assets[].name' | sort > final-assets.txt
           cmp expected-assets.txt final-assets.txt
       - name: Re-download and verify the complete draft
         env:

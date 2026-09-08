@@ -30,11 +30,11 @@ reliability, or revenue. Those need real-world measurement alongside the report.
 
 ## Try it
 
-**Public downloads are not available yet.** Check
-[GitHub Releases](https://github.com/tailored-ai-solutions/codecaddie/releases)
-for publication status. The intended macOS download is one signed, notarized
-universal ZIP for Apple Silicon and Intel. Windows downloads are coming soon;
-Linux desktop source builds are experimental and unsupported.
+Get the latest available download from
+[GitHub Releases](https://github.com/tailored-ai-solutions/codecaddie/releases).
+macOS releases provide one signed, notarized universal ZIP for Apple Silicon
+and Intel. Windows downloads are coming soon; Linux desktop source builds
+are experimental and unsupported.
 
 To try the current application from source, install Git, Node.js 24,
 pnpm 11.22.0, and Rust 1.95.0 (pinned in `rust-toolchain.toml`). Native SDK

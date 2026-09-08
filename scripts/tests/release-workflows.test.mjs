@@ -290,7 +290,8 @@ test("publisher creates a complete draft and publishes only beta directly", () =
   assert.doesNotMatch(reconcile, /immutable-releases/);
   assert.match(release, /jq -er \.immutable candidate-release\.json/);
   assert.match(release, /isImmutable/);
-  assert.match(reconcile, /jq -er \.immutable requested-release-before-publication\.json/);
+  const publication = namedStep(reconcile, "Publish once with the high-water decision in the immutable request");
+  assert.match(publication, /else\s*\n\s*test "\$\(jq -er \.immutable requested-release-before-publication\.json\)" = true/);
   assert.match(release, /gh release create "\$RELEASE_TAG"/);
   assert.match(release, /--draft/);
   assert.match(release, /--target "\$GITHUB_SHA"/);
