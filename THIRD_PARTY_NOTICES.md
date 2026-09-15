@@ -16,10 +16,12 @@ runtime and packaging dependencies are:
   Apache-2.0. Used for authenticated local-state encryption.
 - argon2 0.6.0 and its RustCrypto dependencies — MIT OR Apache-2.0. Used to
   derive portable-backup encryption keys from user-provided passphrases.
-- lopdf 0.44.0 — MIT. Used for bounded, device-local PDF text extraction.
+- lopdf 0.45.0 — MIT (carries brotli-decompressor 5.0.3, BSD-3-Clause OR MIT,
+  for `/BrotliDecode` streams). Used for bounded, device-local PDF text
+  extraction.
 - quick-xml 0.42.0 — MIT. Used for bounded DOCX/PPTX XML text extraction.
-- plist 1.10.0 — MIT (carries quick-xml 0.41.0). Used by the updater to read
-  a candidate application's `Info.plist` before replacement.
+- plist 1.10.1 — MIT. Used by the updater to read a candidate application's
+  `Info.plist` before replacement.
 - zip 8.6.0 — MIT. Used to read DOCX/PPTX Open XML packages.
 - sigstore-verify 0.11.0 and sigstore-tuf 0.11.0 — Apache-2.0. Used to
   validate keyless update-manifest bundles with Fulcio, Rekor, and rotating
