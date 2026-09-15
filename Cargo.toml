@@ -21,7 +21,7 @@ futures-util = "0.3.33"
 fs2 = "0.4.3"
 jiff = { version = "0.2.16", features = ["serde"] }
 libc = "0.2.177"
-lopdf = { version = "0.44.0", default-features = false }
+lopdf = { version = "0.45.0", default-features = false }
 plist = "1.10.0"
 quick-xml = "0.42.0"
 rand = "0.10.2"
