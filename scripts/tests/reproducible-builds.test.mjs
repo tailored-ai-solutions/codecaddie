@@ -232,6 +232,7 @@ test("Windows reproducibility captures one app build on each isolated runner and
     workflow.indexOf("  windows-native:"),
   );
   const comparison = workflow.slice(workflow.indexOf("  windows-native:"));
+  assert.match(independent, /if: \$\{\{ github\.event_name != 'pull_request' \}\}/);
 
   for (const build of [primary, independent]) {
     assert.match(build, /ref: \$\{\{ github\.sha \}\}/);
@@ -317,11 +318,11 @@ test("Windows reproducibility captures one app build on each isolated runner and
   assert.match(comparison, /if: \$\{\{ always\(\) \}\}/);
   assert.match(
     comparison,
-    /PRIMARY_RESULT: \$\{\{ needs\.windows-native-primary\.result \}\}[\s\S]*INDEPENDENT_RESULT" = success/,
+    /test "\$PRIMARY_RESULT" = success[\s\S]*if \[ "\$EVENT_NAME" = "pull_request" \]; then\s+test "\$INDEPENDENT_RESULT" = skipped[\s\S]*else\s+test "\$INDEPENDENT_RESULT" = success/,
   );
-  assert.match(
-    comparison,
-    /INDEPENDENT_RESULT: \$\{\{ needs\.windows-native-independent\.result \}\}[\s\S]*PRIMARY_RESULT" = success/,
+  assert.equal(
+    (comparison.match(/if: \$\{\{ github\.event_name != 'pull_request' \}\}/g) || []).length,
+    6,
   );
   assert.equal(
     (comparison.match(/actions\/download-artifact@[0-9a-f]{40}/g) || [])
