@@ -34,7 +34,9 @@ assert.ok(policy.performance.maximumRepositoryFiles >= 100_000);
 assert.ok(policy.performance.maximumRepositoryBytes >= 2 * 1024 * 1024 * 1024);
 assert.ok(policy.performance.maximumReportsPerWorkspace >= 1_000);
 
-assert.match(ci, /cron: "17 8 \* \* \*"/);
+assert.doesNotMatch(ci, /\n\s*schedule:/);
+assert.doesNotMatch(ci, /cron:/);
+assert.match(ci, /\n  workflow_dispatch:\s*\n/);
 assert.match(ci, /cargo llvm-cov/);
 assert.match(ci, /--fail-under-lines/);
 assert.match(ci, /performance_gate/);

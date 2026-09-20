@@ -36,9 +36,11 @@ test("the required-check list reproduces the protected-main ruleset exactly", ()
   assert.doesNotMatch(dco, /pull_request_target/);
 });
 
-test("daily dependency scans fail closed before release with a named owner and SLA", () => {
+test("dependency scans fail closed before release with a named owner and SLA", () => {
   assert.match(ci, /on:\s*\n\s*push:\s*\n\s*branches: \[main\]\s*\n\s*pull_request:/);
-  assert.match(ci, /cron: "17 8 \* \* \*"/);
+  assert.doesNotMatch(ci, /\n\s*schedule:/);
+  assert.doesNotMatch(ci, /cron:/);
+  assert.match(ci, /\n  workflow_dispatch:\s*\n/);
   assert.match(ci, /pnpm audit --audit-level high/);
   assert.match(ci, /cargo audit/);
   assert.equal(policy.owners.security, "CodeCaddie security owner");
@@ -97,13 +99,25 @@ test("Dependabot cannot create or automatically rebase an unbounded version-upda
   }
 });
 
-test("required macOS PR coverage remains on both supported architectures", () => {
+test("required macOS release coverage remains on both supported architectures", () => {
   const macos = ci.slice(ci.indexOf("  macos-native:"), ci.indexOf("  windows-native-primary:"));
   assert.match(macos, /runner: macos-15-intel\s*\n\s*architecture: x64/);
   assert.match(macos, /runner: macos-15\s*\n\s*architecture: arm64/);
-  assert.doesNotMatch(macos, /^    if:/m);
+  assert.match(macos, /runs-on: \$\{\{ github\.event_name == 'pull_request' && matrix\.architecture == 'x64' && 'ubuntu-latest' \|\| matrix\.runner \}\}/);
+  assert.match(macos, /CODECADDIE_MACOS_SENTINEL: \$\{\{ github\.event_name == 'pull_request' && matrix\.architecture == 'x64' \}\}/);
+  assert.match(macos, /Preserve x64 required check without a macOS runner on pull requests/);
   assert.ok(policy.requiredSuites.includes("macOS native (x64)"));
   assert.ok(policy.requiredSuites.includes("macOS native (arm64)"));
+});
+
+test("pull requests avoid the second clean Windows build while preserving the aggregate check", () => {
+  const independent = ci.slice(ci.indexOf("  windows-native-independent:"), ci.indexOf("  windows-native:"));
+  const aggregate = ci.slice(ci.indexOf("  windows-native:"), ci.length);
+  assert.match(independent, /if: \$\{\{ github\.event_name != 'pull_request' \}\}/);
+  assert.match(aggregate, /name: Windows native \(x64\)/);
+  assert.match(aggregate, /test "\$PRIMARY_RESULT" = success/);
+  assert.match(aggregate, /if \[ "\$EVENT_NAME" = "pull_request" \]; then\s*\n\s*test "\$INDEPENDENT_RESULT" = skipped/);
+  assert.match(aggregate, /if: \$\{\{ github\.event_name != 'pull_request' \}\}/);
 });
 
 test("the release runbook lists the required checks in the same order as the policy", async () => {
