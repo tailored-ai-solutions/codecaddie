@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  # Daily schedule removed — CI runs on push, pull_request, and workflow_dispatch only.
   push:
     branches: [main]
   pull_request:
